@@ -11,7 +11,10 @@
     "noEmit": true,
     "types": ["vitest/globals"],
     "jsx": "react-jsx",
-    "jsxImportSource": "@lynx-js/react"
+    "jsxImportSource": "@lynx-js/react",
+    "paths": {
+      "@lynx-lab/edge-to-edge": ["./src/index.ts"]
+    }
   },
   "include": ["src", "vitest.config.ts"]
 }

@@ -2,6 +2,17 @@
  * Хуки и компоненты. Отдельная точка входа, чтобы ядро не тянуло
  * @lynx-js/react (он optional peer).
  *
+ * ЭТОТ ФАЙЛ ШИПИТСЯ ИСХОДНИКОМ. `exports["./react"]` указывает на
+ * src/react/index.tsx, а не на dist: JSX здесь обязан пройти через
+ * ReactLynx-лоадер ПОТРЕБИТЕЛЯ, который превращает <view> в снапшоты.
+ * Заранее скомпилированный jsx("view") падает в рантайме с
+ * «Snapshot not found: view» на MTS и «BackgroundSnapshot not found: view»
+ * на BTS (проверено на Pixel 9, T36 в lynx-lab). Rsbuild включает .tsx из
+ * node_modules в JS-правило по умолчанию, и лоадеры ReactLynx висят на нём.
+ *
+ * Импорты только через имя пакета: иначе core соберётся дважды (dist и src)
+ * и у хуков будет свой, отдельный кеш инсетов.
+ *
  * Без useGlobalProps намеренно: его нет в ReactLynx 0.116, который везёт
  * rc-шаблон Sparkling. Реактивность даёт core: он слушает
  * `onGlobalPropsChanged` на GlobalEventEmitter (есть с 0.116) и будит
@@ -16,10 +27,21 @@ import {
   useState,
   useSyncExternalStore,
 } from '@lynx-js/react'
-import { getSafeAreaSnapshot, safeAreaCssVarString, subscribeSafeArea } from '../core.js'
-import { popStackEntry, pushStackEntry, replaceStackEntry } from '../system-bars.js'
-import type { SystemBarsProps } from '../system-bars.js'
-import type { Edge, EdgeInsets, SafeAreaMode, SafeAreaSnapshot } from '../types.js'
+import type {
+  Edge,
+  EdgeInsets,
+  SafeAreaMode,
+  SafeAreaSnapshot,
+  SystemBarsProps,
+} from '@lynx-lab/edge-to-edge'
+import {
+  getSafeAreaSnapshot,
+  popStackEntry,
+  pushStackEntry,
+  replaceStackEntry,
+  safeAreaCssVarString,
+  subscribeSafeArea,
+} from '@lynx-lab/edge-to-edge'
 
 export function useSafeAreaSnapshot(): SafeAreaSnapshot {
   const subscribe = useCallback(
