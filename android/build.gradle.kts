@@ -41,9 +41,10 @@ dependencies {
   // как implementation рискует duplicate-class.
   compileOnly("org.lynxsdk.lynx:lynx:4.0.1")
 
-  // Сгенерированный LynxLibraryProviderImpl помечается @androidx.annotation.Keep,
-  // поэтому androidx.annotation должен быть на compile classpath.
-  compileOnly("androidx.annotation:annotation:1.9.1")
+  // Сгенерированный LynxLibraryProviderImpl помечается @androidx.annotation.Keep.
+  // androidx.annotation приезжает транзитивно из androidx.core (api), явный
+  // compileOnly другой версии ломает consistent resolution AGP:
+  // "Cannot find a version of androidx.annotation that satisfies {strictly 1.6.0}".
 
   // implementation, не compileOnly: WindowCompat/WindowInsetsCompat нужны в
   // рантайме. 1.13.1 требует minCompileSdk 34, это потолок при compileSdk 34
