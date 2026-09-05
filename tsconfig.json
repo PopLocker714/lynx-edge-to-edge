@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "types": ["vitest/globals"],
+    "jsx": "react-jsx",
+    "jsxImportSource": "@lynx-js/react"
+  },
+  "include": ["src", "vitest.config.ts"]
+}

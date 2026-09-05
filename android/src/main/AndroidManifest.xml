@@ -1,0 +1,22 @@
+<!--
+  Мержится AGP автоматически, правок в приложении не требует. Прецедент:
+  androidx.startup.InitializationProvider. ТЕМУ здесь объявлять нельзя:
+  приоритет мержа это variant > app > library, конфликт атрибута даёт hard
+  error с требованием tools:replace. Всё делаем в рантайме.
+
+  Опт-аут для хоста, который хочет управлять окном сам:
+    <provider android:name="dev.lynxlab.edgetoedge.EdgeToEdgeInitProvider"
+              android:authorities="${applicationId}.lynx-edge-to-edge"
+              tools:node="remove" />
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          xmlns:tools="http://schemas.android.com/tools">
+  <application>
+    <provider
+        android:name="dev.lynxlab.edgetoedge.EdgeToEdgeInitProvider"
+        android:authorities="${applicationId}.lynx-edge-to-edge"
+        android:exported="false"
+        android:initOrder="200"
+        tools:node="merge" />
+  </application>
+</manifest>

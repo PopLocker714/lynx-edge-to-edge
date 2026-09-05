@@ -1,0 +1,12 @@
+{
+  "platforms": {
+    "android": {
+      "packageName": "dev.lynxlab.edgetoedge",
+      "sourceDir": "android"
+    },
+    "ios": {
+      "sourceDir": "ios",
+      "podspecPath": "ios/LynxEdgeToEdge.podspec"
+    }
+  }
+}
