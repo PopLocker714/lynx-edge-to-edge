@@ -6,6 +6,11 @@
 #import <Lynx/LynxViewClient.h>
 #import <os/lock.h>
 
+@interface LEESafeAreaStore ()
++ (UIWindow *)lee_keyWindow;
++ (void)lee_warmFromWindow:(UIWindow *)window;
+@end
+
 #pragma mark - Observer
 
 /**
