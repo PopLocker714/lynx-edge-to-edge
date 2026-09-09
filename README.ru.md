@@ -29,6 +29,12 @@ bun add @lynx-lab/edge-to-edge
 **Android** — больше ничего. `ContentProvider` из манифеста библиотеки включает
 edge-to-edge и начинает публиковать инсеты ещё до `Application.onCreate`.
 
+Одна особенность Gradle-плагина Lynx: сгенерированный autolink-реестр
+(`app/build/generated/source/lynxLibraryRegistry/`) не перегенерируется при добавлении
+библиотеки, и нативный модуль остаётся незарегистрированным, пока вы не удалите этот
+каталог или не выполните `./gradlew clean` один раз после `bun add`. Инсеты работают
+и без модуля; он нужен только `refreshSafeArea()` и сеттерам системных баров.
+
 **iOS** — `pod install`.
 
 ## Использование
