@@ -3,6 +3,12 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+#if DEBUG
+#define LEELog(fmt, ...) NSLog((@"[LynxEdgeToEdge] " fmt), ##__VA_ARGS__)
+#else
+#define LEELog(fmt, ...)
+#endif
+
 typedef struct {
   CGFloat top, right, bottom, left;
   CGFloat keyboardHeight;
@@ -26,6 +32,18 @@ typedef struct {
 /** LynxView регистрирует себя, чтобы получать updateGlobalPropsWithDictionary:. */
 + (void)registerLynxView:(UIView *)lynxView;
 + (void)registerContext:(id)lynxContext;
+
+/**
+ * Глобальный клиент LynxViewLifecycle через LynxEnv.lifecycleDispatcher: LynxView.mm
+ * подключает его к диспетчеру каждого view, а lynxViewDidStartLoading: приходит
+ * синхронно в начале loadTemplateFromURL: (LynxTemplateRender.mm:591 @3.9.0), то есть
+ * ДО старта JS-рантайма. Это iOS-аналог ActivityLifecycleCallbacks + onActivityPostStarted.
+ * Ставится из +load на UIApplicationDidFinishLaunching; модуль зовёт повторно как страховку.
+ */
++ (void)installLifecycleHook;
+
+/** Невидимая observer-вьюха внутри LynxView. Идемпотентно. Только с главной очереди. */
++ (void)attachObserverToLynxView:(UIView *)lynxView;
 
 @end
 

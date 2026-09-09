@@ -65,7 +65,10 @@ export function fromWire(
     },
     keyboardHeight: num(wire.keyboardHeight),
     generation: num(wire.generation),
-    edgeToEdge: wire.edgeToEdge === true,
+    // iOS кладёт @YES в globalProps, и в JS это приезжает числом 1, а не true.
+    // Без нормализации снимок из globalProps и из нативного события различаются
+    // одним этим полем и порождают лишний ре-рендер.
+    edgeToEdge: wire.edgeToEdge === true || (wire.edgeToEdge as unknown) === 1,
     source,
   }
 }

@@ -33,6 +33,24 @@ describe('fromWire', () => {
   })
 })
 
+describe('fromWire: edgeToEdge', () => {
+  it('число 1 из globalProps на iOS считается true', () => {
+    expect(
+      fromWire(
+        { edgeToEdge: 1 as unknown as boolean, generation: 1 },
+        'globalProps'
+      ).edgeToEdge
+    ).toBe(true)
+    expect(
+      fromWire({ edgeToEdge: true, generation: 1 }, 'native').edgeToEdge
+    ).toBe(true)
+    expect(
+      fromWire({ edgeToEdge: 0 as unknown as boolean, generation: 1 }, 'native')
+        .edgeToEdge
+    ).toBe(false)
+  })
+})
+
 describe('порядок чтения', () => {
   it('globalProps раньше нативного геттера', () => {
     const fake = createFakeEdgeToEdge({

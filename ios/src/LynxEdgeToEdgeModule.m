@@ -4,56 +4,6 @@
 #import <Lynx/LynxView.h>
 #import <UIKit/UIKit.h>
 
-#pragma mark - Наблюдатель
-
-/**
- * Невидимая вьюха на весь LynxView. Чинит одноразовый снимок
- * LynxEnv::setKeyWindowAndStatusBar (вызывается ровно раз, без наблюдателя
- * за поворотом, split view и Dynamic Island): lynx-family/lynx#299.
- *
- * Pinned к bounds родителя через autoresizingMask, поэтому её safeAreaInsets
- * равны safeAreaInsets самого LynxView.
- */
-@interface LEESafeAreaObserverView : UIView
-@end
-
-@implementation LEESafeAreaObserverView
-
-- (instancetype)initWithFrame:(CGRect)frame {
-  if (self = [super initWithFrame:frame]) {
-    self.userInteractionEnabled = NO;
-    self.hidden = NO;  // hidden=YES отключает обновление safe area
-    self.alpha = 0.0;
-    self.backgroundColor = UIColor.clearColor;
-    self.autoresizingMask =
-        UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-  }
-  return self;
-}
-
-- (void)lee_publish {
-  LEESnapshot current = LEESafeAreaStore.snapshot;
-  [LEESafeAreaStore publishInsets:self.safeAreaInsets
-                   keyboardHeight:current.keyboardHeight];
-}
-
-- (void)safeAreaInsetsDidChange {
-  [super safeAreaInsetsDidChange];
-  [self lee_publish];  // поворот, split view, Dynamic Island
-}
-
-- (void)layoutSubviews {
-  [super layoutSubviews];
-  [self lee_publish];  // одного safeAreaInsetsDidChange не хватает
-}
-
-- (void)didMoveToWindow {
-  [super didMoveToWindow];
-  if (self.window) [self lee_publish];
-}
-
-@end
-
 #pragma mark - Модуль
 
 @implementation LynxEdgeToEdgeModule {
@@ -80,6 +30,9 @@
   if (self = [super init]) {
     _context = context;
     [LEESafeAreaStore registerContext:context];
+    // Страховка для хостов, где UIApplicationDidFinishLaunching уже прошёл
+    // до загрузки нашего образа (динамическая подгрузка библиотеки).
+    [LEESafeAreaStore installLifecycleHook];
     // Модуль создаётся на JS-потоке: к UIKit только через главную очередь (T5).
     dispatch_async(dispatch_get_main_queue(), ^{
       [self lee_attach];
@@ -88,19 +41,12 @@
   return self;
 }
 
+/** Поздний путь: хук lifecycle уже сделал то же самое до старта JS, здесь идемпотентно. */
 - (void)lee_attach {
   LynxView *lynxView = [_context getLynxView];
   if (!lynxView) return;
   [LEESafeAreaStore registerLynxView:lynxView];
-
-  for (UIView *sub in lynxView.subviews) {
-    if ([sub isKindOfClass:LEESafeAreaObserverView.class]) return;  // уже стоит
-  }
-  LEESafeAreaObserverView *observer =
-      [[LEESafeAreaObserverView alloc] initWithFrame:lynxView.bounds];
-  [lynxView addSubview:observer];
-  [lynxView sendSubviewToBack:observer];
-  [observer lee_publish];
+  [LEESafeAreaStore attachObserverToLynxView:lynxView];
 }
 
 #pragma mark - Мостовые методы
