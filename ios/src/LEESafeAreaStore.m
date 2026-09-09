@@ -55,10 +55,9 @@
   [self lee_publish];
 }
 
-- (void)didMoveToWindow {
-  [super didMoveToWindow];
-  [self lee_publish];
-}
+// didMoveToWindow намеренно не публикует: в этот момент окно уже есть, bounds
+// непустые, а safeAreaInsets ещё нулевые до первого layout. На симуляторе это
+// давало gen с нулями между двумя верными. layoutSubviews придёт сразу следом.
 
 @end
 
