@@ -1,20 +1,20 @@
 {
-  "compilerOptions": {
-    "target": "ES2022",
-    "lib": ["ES2022"],
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "strict": true,
-    "noUncheckedIndexedAccess": true,
-    "verbatimModuleSyntax": true,
-    "skipLibCheck": true,
-    "noEmit": true,
-    "types": ["vitest/globals"],
-    "jsx": "react-jsx",
-    "jsxImportSource": "@lynx-js/react",
-    "paths": {
-      "@lynx-lab/edge-to-edge": ["./src/index.ts"]
-    }
-  },
-  "include": ["src", "vitest.config.ts"]
+    "compilerOptions": {
+        "target": "ES2022",
+        "lib": ["ES2022"],
+        "module": "NodeNext",
+        "moduleResolution": "NodeNext",
+        "strict": true,
+        "noUncheckedIndexedAccess": true,
+        "verbatimModuleSyntax": true,
+        "skipLibCheck": true,
+        "noEmit": true,
+        "types": ["vitest/globals"],
+        "jsx": "react-jsx",
+        "jsxImportSource": "@lynx-js/react",
+        "paths": {
+            "@lynx-lab/edge-to-edge": ["./src/index.ts"]
+        }
+    },
+    "include": ["src", "vitest.config.ts"]
 }

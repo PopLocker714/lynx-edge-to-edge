@@ -7,60 +7,61 @@
 #pragma mark - Модуль
 
 @implementation LynxEdgeToEdgeModule {
-  __weak LynxContext *_context;
+    __weak LynxContext *_context;
 }
 
 + (NSString *)name {
-  return @"LynxEdgeToEdgeModule";
+    return @"LynxEdgeToEdgeModule";
 }
 
 // Таблица проверяется руками: запись с несуществующим селектором молча
 // пропускается при конструировании и падает пойманным исключением при вызове.
 // Имена без ARC selector family (new/copy/init/alloc/mutableCopy), см. T10.
 + (NSDictionary<NSString *, NSString *> *)methodLookup {
-  return @{
-    @"getSnapshot" : NSStringFromSelector(@selector(getSnapshot)),
-    @"refresh" : NSStringFromSelector(@selector(refresh:)),
-    @"setSystemBarStyle" : NSStringFromSelector(@selector(setSystemBarStyle:navigationBar:)),
-    @"setSystemBarHidden" : NSStringFromSelector(@selector(setSystemBarHidden:navigationBar:)),
-  };
+    return @{
+        @"getSnapshot" : NSStringFromSelector(@selector(getSnapshot)),
+        @"refresh" : NSStringFromSelector(@selector(refresh:)),
+        @"setSystemBarStyle" : NSStringFromSelector(@selector(setSystemBarStyle:navigationBar:)),
+        @"setSystemBarHidden" : NSStringFromSelector(@selector(setSystemBarHidden:navigationBar:)),
+    };
 }
 
 - (instancetype)initWithLynxContext:(LynxContext *)context {
-  if (self = [super init]) {
-    _context = context;
-    [LEESafeAreaStore registerContext:context];
-    // Страховка для хостов, где UIApplicationDidFinishLaunching уже прошёл
-    // до загрузки нашего образа (динамическая подгрузка библиотеки).
-    [LEESafeAreaStore installLifecycleHook];
-    // Модуль создаётся на JS-потоке: к UIKit только через главную очередь (T5).
-    dispatch_async(dispatch_get_main_queue(), ^{
-      [self lee_attach];
-    });
-  }
-  return self;
+    if (self = [super init]) {
+        _context = context;
+        [LEESafeAreaStore registerContext:context];
+        // Страховка для хостов, где UIApplicationDidFinishLaunching уже прошёл
+        // до загрузки нашего образа (динамическая подгрузка библиотеки).
+        [LEESafeAreaStore installLifecycleHook];
+        // Модуль создаётся на JS-потоке: к UIKit только через главную очередь (T5).
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self lee_attach];
+        });
+    }
+    return self;
 }
 
 /** Поздний путь: хук lifecycle уже сделал то же самое до старта JS, здесь идемпотентно. */
 - (void)lee_attach {
-  LynxView *lynxView = [_context getLynxView];
-  if (!lynxView) return;
-  [LEESafeAreaStore registerLynxView:lynxView];
-  [LEESafeAreaStore attachObserverToLynxView:lynxView];
+    LynxView *lynxView = [_context getLynxView];
+    if (!lynxView)
+        return;
+    [LEESafeAreaStore registerLynxView:lynxView];
+    [LEESafeAreaStore attachObserverToLynxView:lynxView];
 }
 
 #pragma mark - Мостовые методы
 
 /** Синхронно, без хопа: читает тёплый кеш, прогретый из +load. */
 - (NSDictionary *)getSnapshot {
-  return [LEESafeAreaStore snapshotDictionary];
+    return [LEESafeAreaStore snapshotDictionary];
 }
 
 - (void)refresh:(LynxCallbackBlock)callback {
-  dispatch_async(dispatch_get_main_queue(), ^{
-    [self lee_attach];
-    callback([LEESafeAreaStore snapshotDictionary]);
-  });
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self lee_attach];
+        callback([LEESafeAreaStore snapshotDictionary]);
+    });
 }
 
 /**

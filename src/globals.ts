@@ -7,7 +7,7 @@
 import type { SafeAreaWire } from './native.js'
 
 declare module '@lynx-js/react' {
-  interface GlobalProps {
-    safeArea?: SafeAreaWire
-  }
+    interface GlobalProps {
+        safeArea?: SafeAreaWire
+    }
 }

@@ -1,98 +1,98 @@
 {
-  "name": "@lynx-lab/edge-to-edge",
-  "version": "0.0.0-development",
-  "description": "Safe area insets, edge-to-edge window and system bars for Lynx — correct on the first frame, reactive on rotation, one CSS variable per inset.",
-  "license": "MIT",
-  "author": "PopLocker714",
-  "type": "module",
-  "sideEffects": false,
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/PopLocker714/lynx-edge-to-edge.git"
-  },
-  "bugs": "https://github.com/PopLocker714/lynx-edge-to-edge/issues",
-  "homepage": "https://github.com/PopLocker714/lynx-edge-to-edge#readme",
-  "keywords": [
-    "lynx",
-    "lynxjs",
-    "lynx-native-module",
-    "safe-area",
-    "safe-area-insets",
-    "edge-to-edge",
-    "system-bars",
-    "status-bar",
-    "navigation-bar",
-    "keyboard"
-  ],
-  "exports": {
-    "./package.json": "./package.json",
-    "./lynx.lib.json": "./lynx.lib.json",
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "default": "./dist/index.js"
+    "name": "@lynx-lab/edge-to-edge",
+    "version": "0.0.0-development",
+    "description": "Safe area insets, edge-to-edge window and system bars for Lynx — correct on the first frame, reactive on rotation, one CSS variable per inset.",
+    "license": "MIT",
+    "author": "PopLocker714",
+    "type": "module",
+    "sideEffects": false,
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/PopLocker714/lynx-edge-to-edge.git"
     },
-    "./react": {
-      "types": "./dist/react/index.d.ts",
-      "import": "./src/react/index.tsx",
-      "default": "./src/react/index.tsx"
+    "bugs": "https://github.com/PopLocker714/lynx-edge-to-edge/issues",
+    "homepage": "https://github.com/PopLocker714/lynx-edge-to-edge#readme",
+    "keywords": [
+        "lynx",
+        "lynxjs",
+        "lynx-native-module",
+        "safe-area",
+        "safe-area-insets",
+        "edge-to-edge",
+        "system-bars",
+        "status-bar",
+        "navigation-bar",
+        "keyboard"
+    ],
+    "exports": {
+        "./package.json": "./package.json",
+        "./lynx.lib.json": "./lynx.lib.json",
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js",
+            "default": "./dist/index.js"
+        },
+        "./react": {
+            "types": "./dist/react/index.d.ts",
+            "import": "./src/react/index.tsx",
+            "default": "./src/react/index.tsx"
+        },
+        "./testing": {
+            "types": "./dist/testing/index.d.ts",
+            "import": "./dist/testing/index.js",
+            "default": "./dist/testing/index.js"
+        }
     },
-    "./testing": {
-      "types": "./dist/testing/index.d.ts",
-      "import": "./dist/testing/index.js",
-      "default": "./dist/testing/index.js"
-    }
-  },
-  "files": [
-    "dist",
-    "src/**/*.ts",
-    "src/**/*.tsx",
-    "!src/__tests__",
-    "android",
-    "!android/build",
-    "!android/.gradle",
-    "ios",
-    "lynx.lib.json",
-    "LICENSE",
-    "README.md",
-    "README.ru.md"
-  ],
-  "scripts": {
-    "build": "tsc -p tsconfig.build.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "biome check .",
-    "format": "biome format --write .",
-    "test": "vitest run",
-    "prepack": "bun run build",
-    "prepublishOnly": "node scripts/check-publishable.mjs",
-    "release": "semantic-release"
-  },
-  "peerDependencies": {
-    "@lynx-js/react": ">=0.116.0",
-    "@lynx-js/types": ">=3.9.0"
-  },
-  "peerDependenciesMeta": {
-    "@lynx-js/react": {
-      "optional": true
+    "files": [
+        "dist",
+        "src/**/*.ts",
+        "src/**/*.tsx",
+        "!src/__tests__",
+        "android",
+        "!android/build",
+        "!android/.gradle",
+        "ios",
+        "lynx.lib.json",
+        "LICENSE",
+        "README.md",
+        "README.ru.md"
+    ],
+    "scripts": {
+        "build": "tsc -p tsconfig.build.json",
+        "typecheck": "tsc -p tsconfig.json --noEmit",
+        "lint": "biome check .",
+        "format": "biome format --write .",
+        "test": "vitest run",
+        "prepack": "bun run build",
+        "prepublishOnly": "node scripts/check-publishable.mjs",
+        "release": "semantic-release"
     },
-    "@lynx-js/types": {
-      "optional": true
-    }
-  },
-  "devDependencies": {
-    "@biomejs/biome": "^2.0.0",
-    "@lynx-js/react": "^0.125.0",
-    "@lynx-js/types": "^4.1.0",
-    "@semantic-release/changelog": "^6.0.3",
-    "@semantic-release/git": "^10.0.1",
-    "conventional-changelog-conventionalcommits": "^9.0.0",
-    "semantic-release": "^25.0.9",
-    "typescript": "^5.9.0",
-    "vitest": "^4.1.11"
-  },
-  "publishConfig": {
-    "access": "public",
-    "registry": "https://registry.npmjs.org/"
-  },
-  "packageManager": "bun@1.4.0"
+    "peerDependencies": {
+        "@lynx-js/react": ">=0.116.0",
+        "@lynx-js/types": ">=3.9.0"
+    },
+    "peerDependenciesMeta": {
+        "@lynx-js/react": {
+            "optional": true
+        },
+        "@lynx-js/types": {
+            "optional": true
+        }
+    },
+    "devDependencies": {
+        "@biomejs/biome": "^2.0.0",
+        "@lynx-js/react": "^0.125.0",
+        "@lynx-js/types": "^4.1.0",
+        "@semantic-release/changelog": "^6.0.3",
+        "@semantic-release/git": "^10.0.1",
+        "conventional-changelog-conventionalcommits": "^9.0.0",
+        "semantic-release": "^25.0.9",
+        "typescript": "^5.9.0",
+        "vitest": "^4.1.11"
+    },
+    "publishConfig": {
+        "access": "public",
+        "registry": "https://registry.npmjs.org/"
+    },
+    "packageManager": "bun@1.4.0"
 }

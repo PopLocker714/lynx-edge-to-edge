@@ -20,48 +20,39 @@
  * значение читается синхронно из lynx.__globalProps на первом кадре.
  */
 import type { ReactNode } from '@lynx-js/react'
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  useSyncExternalStore,
-} from '@lynx-js/react'
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from '@lynx-js/react'
 import type {
-  Edge,
-  EdgeInsets,
-  SafeAreaMode,
-  SafeAreaSnapshot,
-  SystemBarsProps,
+    Edge,
+    EdgeInsets,
+    SafeAreaMode,
+    SafeAreaSnapshot,
+    SystemBarsProps,
 } from '@lynx-lab/edge-to-edge'
 import {
-  getSafeAreaSnapshot,
-  popStackEntry,
-  pushStackEntry,
-  replaceStackEntry,
-  safeAreaCssVarString,
-  subscribeSafeArea,
+    getSafeAreaSnapshot,
+    popStackEntry,
+    pushStackEntry,
+    replaceStackEntry,
+    safeAreaCssVarString,
+    subscribeSafeArea,
 } from '@lynx-lab/edge-to-edge'
 
 export function useSafeAreaSnapshot(): SafeAreaSnapshot {
-  const subscribe = useCallback(
-    (onChange: () => void) => subscribeSafeArea(() => onChange()),
-    []
-  )
-  return useSyncExternalStore(subscribe, getSafeAreaSnapshot, getSafeAreaSnapshot)
+    const subscribe = useCallback((onChange: () => void) => subscribeSafeArea(() => onChange()), [])
+    return useSyncExternalStore(subscribe, getSafeAreaSnapshot, getSafeAreaSnapshot)
 }
 
 export function useSafeAreaInsets(): EdgeInsets {
-  return useSafeAreaSnapshot().insets
+    return useSafeAreaSnapshot().insets
 }
 
 export function useKeyboardHeight(): number {
-  return useSafeAreaSnapshot().keyboardHeight
+    return useSafeAreaSnapshot().keyboardHeight
 }
 
 export interface SafeAreaProviderProps {
-  children?: ReactNode
-  className?: string
+    children?: ReactNode
+    className?: string
 }
 
 /**
@@ -70,67 +61,62 @@ export interface SafeAreaProviderProps {
  * инлайн-объявление поддерживается с Lynx 3.6.
  */
 export function SafeAreaProvider(props: SafeAreaProviderProps) {
-  const snapshot = useSafeAreaSnapshot()
-  const style = useMemo(
-    () => `${safeAreaCssVarString(snapshot)}flex:1;`,
-    [snapshot]
-  )
-  return (
-    <view className={props.className} style={style}>
-      {props.children}
-    </view>
-  )
+    const snapshot = useSafeAreaSnapshot()
+    const style = useMemo(() => `${safeAreaCssVarString(snapshot)}flex:1;`, [snapshot])
+    return (
+        <view className={props.className} style={style}>
+            {props.children}
+        </view>
+    )
 }
 
 export interface SafeAreaViewProps {
-  children?: ReactNode
-  className?: string
-  style?: string
-  /** По умолчанию все четыре. Горизонтальные важны: альбомный вырез и iPad. */
-  edges?: readonly Edge[]
-  /** 'padding' (по умолчанию) или 'margin'. */
-  mode?: SafeAreaMode
-  /** Добавлять ли высоту клавиатуры к нижнему инсету. По умолчанию нет, как в iOS. */
-  avoidKeyboard?: boolean
+    children?: ReactNode
+    className?: string
+    style?: string
+    /** По умолчанию все четыре. Горизонтальные важны: альбомный вырез и iPad. */
+    edges?: readonly Edge[]
+    /** 'padding' (по умолчанию) или 'margin'. */
+    mode?: SafeAreaMode
+    /** Добавлять ли высоту клавиатуры к нижнему инсету. По умолчанию нет, как в iOS. */
+    avoidKeyboard?: boolean
 }
 
 const ALL_EDGES: readonly Edge[] = ['top', 'right', 'bottom', 'left']
 
 export function safeAreaViewStyle(
-  snapshot: SafeAreaSnapshot,
-  props: Pick<SafeAreaViewProps, 'edges' | 'mode' | 'avoidKeyboard' | 'style'>
+    snapshot: SafeAreaSnapshot,
+    props: Pick<SafeAreaViewProps, 'edges' | 'mode' | 'avoidKeyboard' | 'style'>
 ): string {
-  const { insets, keyboardHeight } = snapshot
-  const edges = props.edges ?? ALL_EDGES
-  const prop = props.mode === 'margin' ? 'margin' : 'padding'
-  const bottom =
-    props.avoidKeyboard === true
-      ? Math.max(insets.bottom, keyboardHeight)
-      : insets.bottom
-  let style = ''
-  if (edges.includes('top')) style += `${prop}-top:${insets.top}px;`
-  if (edges.includes('right')) style += `${prop}-right:${insets.right}px;`
-  if (edges.includes('bottom')) style += `${prop}-bottom:${bottom}px;`
-  if (edges.includes('left')) style += `${prop}-left:${insets.left}px;`
-  return style + (props.style ?? '')
+    const { insets, keyboardHeight } = snapshot
+    const edges = props.edges ?? ALL_EDGES
+    const prop = props.mode === 'margin' ? 'margin' : 'padding'
+    const bottom =
+        props.avoidKeyboard === true ? Math.max(insets.bottom, keyboardHeight) : insets.bottom
+    let style = ''
+    if (edges.includes('top')) style += `${prop}-top:${insets.top}px;`
+    if (edges.includes('right')) style += `${prop}-right:${insets.right}px;`
+    if (edges.includes('bottom')) style += `${prop}-bottom:${bottom}px;`
+    if (edges.includes('left')) style += `${prop}-left:${insets.left}px;`
+    return style + (props.style ?? '')
 }
 
 export function SafeAreaView(props: SafeAreaViewProps) {
-  const snapshot = useSafeAreaSnapshot()
-  const style = safeAreaViewStyle(snapshot, props)
-  return (
-    <view className={props.className} style={style}>
-      {props.children}
-    </view>
-  )
+    const snapshot = useSafeAreaSnapshot()
+    const style = safeAreaViewStyle(snapshot, props)
+    return (
+        <view className={props.className} style={style}>
+            {props.children}
+        </view>
+    )
 }
 
 /** Android system-bar controls via the entry stack; no native effect on iOS in v1. */
 export function SystemBars(props: SystemBarsProps) {
-  const [entry, setEntry] = useState(() => pushStackEntry(props))
-  useEffect(() => {
-    setEntry((current) => replaceStackEntry(current, props))
-  }, [props.style, props.hidden])
-  useEffect(() => () => popStackEntry(entry), [entry])
-  return null
+    const [entry, setEntry] = useState(() => pushStackEntry(props))
+    useEffect(() => {
+        setEntry((current) => replaceStackEntry(current, props))
+    }, [props.style, props.hidden])
+    useEffect(() => () => popStackEntry(entry), [entry])
+    return null
 }

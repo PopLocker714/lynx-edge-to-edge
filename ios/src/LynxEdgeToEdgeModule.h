@@ -20,8 +20,8 @@ NS_ASSUME_NONNULL_BEGIN
  * этот протокол и сам зовёт `initWithLynxContext:`. Autolink регистрирует
  * модуль БЕЗ param, поэтому `initWithParam:` не вызовется никогда (T28).
  */
-@LynxNativeModule("LynxEdgeToEdgeModule")
-@interface LynxEdgeToEdgeModule : NSObject <LynxContextModule>
+@LynxNativeModule("LynxEdgeToEdgeModule") @interface LynxEdgeToEdgeModule
+    : NSObject<LynxContextModule>
 @end
 
 NS_ASSUME_NONNULL_END

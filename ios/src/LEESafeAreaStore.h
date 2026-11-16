@@ -10,9 +10,9 @@ NS_ASSUME_NONNULL_BEGIN
 #endif
 
 typedef struct {
-  CGFloat top, right, bottom, left;
-  CGFloat keyboardHeight;
-  NSInteger generation;
+    CGFloat top, right, bottom, left;
+    CGFloat keyboardHeight;
+    NSInteger generation;
 } LEESnapshot;
 
 /**
