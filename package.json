@@ -1,7 +1,7 @@
 {
     "name": "@lynx-lab/edge-to-edge",
     "version": "0.0.0-development",
-    "description": "Safe area insets, edge-to-edge window and system bars for Lynx \u2014 correct on the first frame, reactive on rotation, one CSS variable per inset.",
+    "description": "Safe area insets, edge-to-edge window and system bars for Lynx, with per-view updates and CSS custom properties.",
     "license": "MIT",
     "author": "PopLocker714",
     "type": "module",

@@ -1,5 +1,13 @@
 # @lynx-lab/edge-to-edge
 
+> **English** · [Русский](./README.ru.md)
+
+[![CI](https://github.com/PopLocker714/lynx-edge-to-edge/actions/workflows/ci.yml/badge.svg)](https://github.com/PopLocker714/lynx-edge-to-edge/actions/workflows/ci.yml)
+[![license](https://img.shields.io/github/license/PopLocker714/lynx-edge-to-edge?color=blue)](./LICENSE)
+
+Safe area insets, edge-to-edge window and system bars for [Lynx](https://lynxjs.org).
+`react-native-edge-to-edge` plus `react-native-safe-area-context`, in one package.
+
 > **Pre-release / candidate.** Native ownership was changed in this revision. Historical
 > device results do not establish readiness of this artifact; the current consumer matrix is
 > [documented separately](./docs/compatibility.md).
@@ -35,11 +43,13 @@ bun add @lynx-lab/edge-to-edge
 **Android** — the manifest `ContentProvider` installs Activity observation before
 `Application.onCreate`; it publishes when a window/view is available.
 
-One thing the Lynx Gradle plugin gets wrong: the generated autolink registry
-(`app/build/generated/source/lynxLibraryRegistry/`) is not regenerated when you add
-a library, so the native module stays unregistered until you delete that directory or
-run `./gradlew clean` once after `bun add`. Insets still work without the module; only
-`refreshSafeArea()` and the system-bar setters need it.
+The checked Sparkling host can retain a stale generated autolink registry after
+adding a library. Regenerate the consumer variants before building, then verify
+that the native module and provider are present:
+
+```sh
+./gradlew :app:generateDebugLynxLibraryRegistry :app:generateReleaseLynxLibraryRegistry --rerun-tasks
+```
 
 **iOS** — `pod install`. Nothing else.
 

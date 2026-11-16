@@ -43,11 +43,13 @@ bun add @lynx-lab/edge-to-edge
 **Android** — manifest `ContentProvider` устанавливает наблюдение Activity до
 `Application.onCreate`; публикация начинается при появлении окна/view.
 
-Одна особенность Gradle-плагина Lynx: сгенерированный autolink-реестр
-(`app/build/generated/source/lynxLibraryRegistry/`) не перегенерируется при добавлении
-библиотеки, и нативный модуль остаётся незарегистрированным, пока вы не удалите этот
-каталог или не выполните `./gradlew clean` один раз после `bun add`. Инсеты работают
-и без модуля; он нужен только `refreshSafeArea()` и сеттерам системных баров.
+Проверенный Sparkling host может сохранить устаревший autolink-реестр после
+добавления библиотеки. Перед сборкой перегенерируйте варианты consumer, затем
+проверьте наличие native module и provider:
+
+```sh
+./gradlew :app:generateDebugLynxLibraryRegistry :app:generateReleaseLynxLibraryRegistry --rerun-tasks
+```
 
 **iOS** — `pod install`. Больше ничего.
 
