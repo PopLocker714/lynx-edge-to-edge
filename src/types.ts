@@ -22,7 +22,7 @@ export interface SafeAreaSnapshot {
   readonly keyboardHeight: number
   /** Монотонный счётчик. Разрыв означает пропущенное событие: перечитай. */
   readonly generation: number
-  /** Реально ли окно рисует под барами. На iOS в Sparkling всегда true. */
+  /** Android: включён ли edge-to-edge. iOS: true как предположение о хосте, не измерение. */
   readonly edgeToEdge: boolean
   /** Откуда пришло значение. Диагностика, не логика. */
   readonly source: 'globalProps' | 'native' | 'fallback'

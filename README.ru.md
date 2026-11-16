@@ -89,7 +89,7 @@ function Screen() {
 |---|---|
 | `SafeAreaProvider` | Один `<view>`, который задаёт `--safe-area-inset-top/right/bottom/left` и `--safe-area-keyboard-height` |
 | `SafeAreaView` | Применяет инсеты как `padding` (по умолчанию) или `margin`; `edges`, `avoidKeyboard` |
-| `SystemBars` | Декларативный стиль и видимость баров; вложенные экземпляры образуют стек, побеждает самый глубокий |
+| `SystemBars` | Стиль и видимость баров Android; вложенные экземпляры образуют стек, побеждает самый глубокий; iOS — no-op |
 | `useSafeAreaInsets()` | `EdgeInsets`, ре-рендер при изменении |
 | `useSafeAreaSnapshot()` | Инсеты плюс `keyboardHeight`, `generation`, `edgeToEdge`, `source` |
 | `useKeyboardHeight()` | Высота клавиатуры в dp / pt, Android API 30+ и iOS |
@@ -101,8 +101,8 @@ function Screen() {
 | `getSafeAreaInsets()`, `getSafeAreaSnapshot()` | Синхронное чтение; работает на обоих потоках, на главном читает `lynx.__globalProps` |
 | `subscribeSafeArea(listener)` | Сразу отдаёт текущее значение, потом каждое изменение. Только фоновый поток |
 | `refreshSafeArea()` | Перенакатывает окно и перечитывает инсеты; для хостов, где провайдер не отработал |
-| `setSystemBarStyle('auto' \| 'inverted' \| 'light' \| 'dark')` | Цвет иконок статус-бара и навигации |
-| `setSystemBarHidden(boolean)` | Скрыть или показать оба бара; инсеты обновляются |
+| `setSystemBarStyle('auto' \| 'inverted' \| 'light' \| 'dark')` | Цвет иконок статус-бара и навигации Android; iOS — no-op |
+| `setSystemBarHidden(boolean)` | Android: скрыть/показать оба бара с обновлением инcетов; iOS — no-op |
 | `safeAreaCssVarString(snapshot)` | Строка CSS-переменных, которую использует `SafeAreaProvider` |
 
 `generation` это монотонный счётчик, общий для всех каналов доставки; разрыв означает
@@ -128,11 +128,22 @@ function Screen() {
 инсеты. Инсеты это `systemBars() | displayCutout()`; клавиатура отдельным полем, как в
 iOS. Ниже API 30 `keyboardHeight` всегда `0`.
 
-**iOS.** Sparkling и так рисует под барами, включать нечего. Пакет отдаёт инсеты и
-обновляет их на повороте, в split view и при смене Dynamic Island через невидимую
-observer-вьюху внутри `LynxView`. `setSystemBarStyle` и `setSystemBarHidden` в v1
-честные no-op: у Sparkling нет config-плагинов, пакет не может инжектить `Info.plist`,
-а без `UIViewControllerBasedStatusBarAppearance = NO` сеттеры всё равно ничего не сделают.
+**iOS.** Геометрию `LynxView` и размещение контента под системным UI определяет
+нативный хост. Пакет получает инсеты через observer-вьюху внутри `LynxView`;
+обновление safe area не требует скрывать бары или менять их стиль.
+`setSystemBarStyle`, `setSystemBarHidden` и `<SystemBars>` в v1 управляют барами
+**только на Android**; на iOS их нативные сеттеры ничего не делают.
+
+Статус-бар iOS настраивается владеющим экраном контроллером через
+[`preferredStatusBarStyle` и `prefersStatusBarHidden`](https://developer.apple.com/documentation/uikit/uiviewcontroller).
+Пакет не требует `UIViewControllerBasedStatusBarAppearance = NO` и не меняет
+политику статус-бара хоста. Navigation bar iOS — панель самого приложения;
+у [индикатора Home](https://developer.apple.com/documentation/uikit/uiviewcontroller/prefershomeindicatorautohidden)
+отдельная настройка автоматического скрытия, окончательное решение принимает ОС.
+Это не Android system navigation bar, которым управляет данный API.
+
+Текущий iOS snapshot возвращает `edgeToEdge: true` как предположение о хосте,
+а не результат измерения геометрии view. Для layout используйте полученные инсеты.
 
 **Несколько `LynxView`.** У каждого view свои `globalProps`, поэтому несколько view с
 разными инсетами работают. Кеш один на процесс.

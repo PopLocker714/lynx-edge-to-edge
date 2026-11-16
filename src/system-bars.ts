@@ -13,6 +13,7 @@ export interface SystemBarsEntry {
   navigationBarHidden: boolean | null
 }
 
+/** Android system-bar controls. Native setters are no-ops on iOS in v1. */
 export interface SystemBarsProps {
   style?:
     | SystemBarStyle
@@ -123,10 +124,12 @@ export function replaceStackEntry(
   return next
 }
 
+/** Sets Android system-bar icon style. No native effect on iOS in v1. */
 export function setSystemBarStyle(style: SystemBarStyle): void {
   pushStackEntry({ style })
 }
 
+/** Sets Android system-bar visibility. No native effect on iOS in v1. */
 export function setSystemBarHidden(hidden: boolean): void {
   pushStackEntry({ hidden })
 }

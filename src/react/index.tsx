@@ -125,7 +125,7 @@ export function SafeAreaView(props: SafeAreaViewProps) {
   )
 }
 
-/** Компонент ничего не рендерит; вся работа в стеке записей. */
+/** Android system-bar controls via the entry stack; no native effect on iOS in v1. */
 export function SystemBars(props: SystemBarsProps) {
   const [entry, setEntry] = useState(() => pushStackEntry(props))
   useEffect(() => {

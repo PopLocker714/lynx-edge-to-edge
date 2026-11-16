@@ -64,10 +64,10 @@
 }
 
 /**
- * v1: честные no-op. Config-плагинов у Sparkling нет, Info.plist пакет
- * инжектить не может, а без UIViewControllerBasedStatusBarAppearance=NO
- * стиль бара с уровня UIApplication не применяется. README говорит это
- * прямым текстом. v1.1 добавит путь через plist-ключ.
+ * v1: Android-only controls; iOS setters intentionally have no native effect.
+ * The owning UIViewController controls status-bar style/visibility. Safe-area
+ * reporting does not require changing that policy. The iOS navigation bar and
+ * Home indicator are not equivalents of Android's system navigation bar.
  */
 - (void)setSystemBarStyle:(NSString *)statusBar navigationBar:(NSString *)navigationBar {
 }

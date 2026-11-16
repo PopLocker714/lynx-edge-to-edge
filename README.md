@@ -90,7 +90,7 @@ insets as padding or margin for you.
 |---|---|
 | `SafeAreaProvider` | One `<view>` that sets `--safe-area-inset-top/right/bottom/left` and `--safe-area-keyboard-height` |
 | `SafeAreaView` | Applies insets as `padding` (default) or `margin`; `edges`, `avoidKeyboard` |
-| `SystemBars` | Declarative system-bar style and visibility; nested instances stack, the deepest wins |
+| `SystemBars` | Android system-bar style and visibility; nested instances stack, the deepest wins; iOS no-op |
 | `useSafeAreaInsets()` | `EdgeInsets`, re-renders on change |
 | `useSafeAreaSnapshot()` | Insets plus `keyboardHeight`, `generation`, `edgeToEdge`, `source` |
 | `useKeyboardHeight()` | Keyboard height in dp / pt, Android API 30+ and iOS |
@@ -102,8 +102,8 @@ insets as padding or margin for you.
 | `getSafeAreaInsets()`, `getSafeAreaSnapshot()` | Synchronous read; works on both threads, on the main thread it reads `lynx.__globalProps` |
 | `subscribeSafeArea(listener)` | Delivers the current value immediately, then every change. Background thread only |
 | `refreshSafeArea()` | Re-applies the window and re-reads the insets; for hosts where the provider did not run |
-| `setSystemBarStyle('auto' \| 'inverted' \| 'light' \| 'dark')` | Status and navigation bar icon color |
-| `setSystemBarHidden(boolean)` | Hide or show both bars; insets update accordingly |
+| `setSystemBarStyle('auto' \| 'inverted' \| 'light' \| 'dark')` | Android status and navigation bar icon color; iOS no-op |
+| `setSystemBarHidden(boolean)` | Android: hide/show both bars and update insets; iOS no-op |
 | `safeAreaCssVarString(snapshot)` | The CSS custom-property string `SafeAreaProvider` uses |
 
 `generation` is a monotonic counter shared by every delivery channel; a gap means an
@@ -129,12 +129,22 @@ cutout. On `targetSdk >= 35` the system enforces edge-to-edge and the package on
 reports insets. Insets are `systemBars() | displayCutout()`; the keyboard is a
 separate field, like iOS. Below API 30 `keyboardHeight` is always `0`.
 
-**iOS.** Sparkling already draws under the bars, so there is nothing to enable. The
-package reports the insets and keeps them fresh on rotation, split view and Dynamic
-Island through an invisible observer view inside the `LynxView`. `setSystemBarStyle`
-and `setSystemBarHidden` are honest no-ops in v1: Sparkling has no config plugins, the
-package cannot inject `Info.plist`, and without `UIViewControllerBasedStatusBarAppearance = NO`
-the setters would do nothing anyway.
+**iOS.** The native host controls the `LynxView` frame and whether content extends
+under system UI. The package reports insets through an observer view inside the
+`LynxView`; safe-area updates do not require hiding or restyling system bars.
+`setSystemBarStyle`, `setSystemBarHidden` and `<SystemBars>` are **Android-only
+controls in v1**; on iOS their native setters are no-ops.
+
+Configure the iOS status bar in the owning view controller using
+[`preferredStatusBarStyle` and `prefersStatusBarHidden`](https://developer.apple.com/documentation/uikit/uiviewcontroller).
+This package does not require `UIViewControllerBasedStatusBarAppearance = NO` or
+change the host's status-bar policy. The iOS navigation bar belongs to the app;
+the [Home indicator](https://developer.apple.com/documentation/uikit/uiviewcontroller/prefershomeindicatorautohidden)
+has a separate system-controlled auto-hide preference. Neither is the Android
+system navigation bar addressed by this API.
+
+The current iOS snapshot reports `edgeToEdge: true` as a host assumption, not as
+a measurement of the view's geometry. Use the reported insets for layout.
 
 **Multiple `LynxView`s.** Every view gets its own `globalProps`, so several views with
 different insets work. The store is per process.
