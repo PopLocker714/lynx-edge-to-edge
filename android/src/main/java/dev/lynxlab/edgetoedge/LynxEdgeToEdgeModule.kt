@@ -34,6 +34,7 @@ class LynxEdgeToEdgeModule(
         val activity = ContextUtils.getActivity(mLynxContext) ?: return
         EdgeToEdge.install(activity.application)
         EdgeToEdge.attach(activity)
+        mLynxContext.lynxView?.let { EdgeToEdge.observe(activity, it) }
         EdgeToEdge.scan(activity, force = true)
     }
 

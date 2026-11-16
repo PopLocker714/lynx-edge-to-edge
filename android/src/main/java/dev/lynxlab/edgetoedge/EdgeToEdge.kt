@@ -269,11 +269,17 @@ object EdgeToEdge {
         return null
     }
 
-    /**
-     * Перечитать инсеты и найти LynxView. `force` для хуков жизненного цикла;
-     * с pre-draw обход дерева идёт только при изменении значения или в бюджете
-     * холодного старта, иначе обход каждый кадр навсегда.
-     */
+    /** Module owner registration also covers preloaded views outside decor discovery. */
+    fun observe(
+        activity: Activity,
+        view: LynxView,
+    ) {
+        views
+            .getOrPut(activity) {
+                java.util.Collections.newSetFromMap(WeakHashMap<LynxView, Boolean>())
+            }.add(view)
+    }
+
     fun scan(
         activity: Activity,
         force: Boolean,
