@@ -23,7 +23,7 @@ Safe area insets, edge-to-edge window and system bars for [Lynx](https://lynxjs.
 
 | Checked profile | Status for this revision |
 |---|---|
-| Sparkling 2.1.0-rc.36 / Lynx 3.9 / ReactLynx 0.125 / Rsbuild 2 | Candidate; final consumer device QA pending |
+| Sparkling 2.1.0-rc.36 / Lynx 3.9 / ReactLynx 0.125 / Rsbuild 2 | Debug/Release and native geometry checked; scenario limits below |
 | Historical ReactLynx 0.116 / Rsbuild 1 | Historical evidence only |
 | Other Lynx hosts / minimum OS | Unverified |
 
@@ -33,6 +33,9 @@ The package delivers changing insets through `lynx.__globalProps.safeArea` and C
 An early seed belongs only to the known owner window; embedded views become precise after layout.
 An unattached iOS view waits for attach/layout. First-frame behavior is checked per host;
 there is no universal first-frame guarantee for arbitrary geometry.
+The first visible frame remains unverified on this candidate. Android Release rotation
+was blocked by the device tool; iOS Release keyboard had no host input to exercise.
+See the exact archive and configuration results in [compatibility](./docs/compatibility.md).
 
 ## Install
 

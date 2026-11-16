@@ -9,7 +9,7 @@
 | Профиль | Статус |
 |---|---|
 | Исторический Sparkling rc / Lynx 3.9 / ReactLynx 0.116 / Rsbuild 1 | Старые evidence; не подтверждают изменённый native-код |
-| Sparkling 2.1.0-rc.36 / Lynx 3.9 / ReactLynx 0.125.0 / types 4.2.1 / Rsbuild 2 | Candidate; consumer QA финального архива ещё требуется |
+| Sparkling 2.1.0-rc.36 / Lynx 3.9 / ReactLynx 0.125.0 / types 4.2.1 / Rsbuild 2 | Debug/Release checks зафиксированы ниже; stable gate ещё не закрыт |
 | Другие host, multi-scene iOS, minimum OS | Не проверены |
 
 Release gate: поставить финальный tarball; проверить actual Gradle/Pods sources и регистрацию;
@@ -19,6 +19,43 @@ Android LynxView после 240 кадров: создать модуль до a
 и увидеть свои globalProps. Для iOS проверить unattached->attached и notification resync, который
 не меняет precise insets на window insets. Устройство принадлежит одному QA writer.
 Unit adapters и standalone compile не заменяют эти проверки.
+
+## Зафиксированные consumer-проверки (2026-11-17)
+
+Проверенный source `2ba4bc3`, SHA256 tarball
+`5c235a69cfcb567cd23ca15d72495ce62fea84ebe346b03044fee118f6250232`.
+Pixel 9 / Android 17 и iPhone 11 / iOS 18.4.1: Debug/Release сборки, Android R8,
+совпадение архивов и actual native source bindings прошли. Native runtime остался 3.9.0.
+Source Android app и iOS Release: probe `57e5123`; исправление ожидания UI queue в
+Android test: `5324106`; финальный iOS Debug fixture: `6c57f33`. Последний меняет только Debug setup.
+Evidence: probe `docs/evidence/edge-2026-11-17/results.json`; общий main bundle SHA256
+`a733091ebc094842fd3f6d04f9bb82acd070d3442c9e83381e2d13b4859dde2d`.
+
+Настоящий Android module после 250 кадров, до добавления view, прошёл проверку:
+два view получили свои geometry/globalProps, в том числе после изменения bounds,
+без ручного refresh или публикации в store. Реальные iOS view одного окна прошли
+unattached→attached, различные UIKit insets/globalProps и notification resync. Fixture
+использует публичный MethodPipe setup Sparkling, как SPKWrapperLynxView; без него
+ленивая pipe initialization запускалась при уничтожении bare view. Прежний crash
+host-fixture сохранён отдельно; исправленный fixture прошёл нормальный teardown.
+В Release нет probe symbols.
+
+| UI-сценарий | Android Debug | Android Release | iOS Debug | iOS Release |
+|---|---|---|---|---|
+| Refresh / background-resume | Прошёл | Прошёл | Прошёл | Прошёл |
+| Настоящий поворот | Прошёл | Tool-blocked; PASS не заявлен | Прошёл | Прошёл |
+| Показ/скрытие клавиатуры | Прошёл | Прошёл | Прошёл | Нет host input |
+| Style/hidden баров сохраняются после resume | Прошёл | Прошёл | Ответственность native host | Ответственность native host |
+
+Первый видимый кадр **не подтверждён**. Android logs содержат начальный JS render с
+neutral generation 0; первый стабильный захваченный кадр около 1,75 с уже имеет инсеты/g1.
+Это не доказывает наличие или отсутствие более раннего видимого кадра с нулевыми inset.
+iOS recording не удалось получить после смены runner ownership в инструменте.
+Ни один результат не считается first-frame PASS. Minimum OS, другие host/scenes и remote CI
+также остаются непроверенными.
+
+Последующее изменение касается только документации. Hash выше обозначает проверенный
+артефакт; упаковка обновлённых документов имеет другой hash при идентичном runtime.
 
 При обновлении host:
 

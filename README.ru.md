@@ -23,7 +23,7 @@ Safe area, инсеты, edge-to-edge и системные бары для [Lyn
 
 | Проверяемая связка | Статус этой версии |
 |---|---|
-| Sparkling 2.1.0-rc.36 / Lynx 3.9 / ReactLynx 0.125 / Rsbuild 2 | Candidate; финальный consumer device QA требуется |
+| Sparkling 2.1.0-rc.36 / Lynx 3.9 / ReactLynx 0.125 / Rsbuild 2 | Debug/Release и native geometry проверены; границы сценариев ниже |
 | Исторический ReactLynx 0.116 / Rsbuild 1 | Только прежние evidence |
 | Другие Lynx host / minimum OS | Не проверены |
 
@@ -33,6 +33,9 @@ Safe area, инсеты, edge-to-edge и системные бары для [Lyn
 Ранний seed относится только к известному окну владельца; вложенный view получает точную
 геометрию после layout. Unattached iOS view ждёт attach/layout. Первый кадр проверяется отдельно
 для каждого host; универсальной гарантии для произвольной геометрии нет.
+Первый видимый кадр этого candidate ещё не подтверждён. Android Release rotation
+заблокирован инструментом устройства; в iOS Release нет host input для проверки клавиатуры.
+Точный архив и результаты конфигураций — в [совместимости](./docs/compatibility.ru.md).
 
 ## Установка
 
