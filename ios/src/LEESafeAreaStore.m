@@ -6,295 +6,228 @@
 #import <Lynx/LynxViewClient.h>
 #import <os/lock.h>
 
+// Only snapshots cross threads. No lock is held while calling UIKit or Lynx.
+static NSMapTable<UIView *, NSDictionary *> *snapshots;
+static NSHashTable<UIView *> *views;
+static NSHashTable<LynxContext *> *contexts;
+static os_unfair_lock snapshotLock = OS_UNFAIR_LOCK_INIT;
+static CGRect keyboardFrame;
+static __weak UIWindow *keyboardWindow;
+
 @interface LEESafeAreaStore ()
-+ (UIWindow *)lee_keyWindow;
-+ (void)lee_warmFromWindow:(UIWindow *)window;
++ (void)publishView:(UIView *)view insets:(UIEdgeInsets)insets;
 @end
 
-#pragma mark - Observer
-
-/**
- * Невидимая вьюха на весь LynxView. Чинит одноразовый снимок
- * LynxEnv::setKeyWindowAndStatusBar (lynx-family/lynx#299): поворот, split view,
- * Dynamic Island. Pinned к bounds родителя через autoresizingMask, поэтому её
- * safeAreaInsets равны safeAreaInsets самого LynxView.
- */
 @interface LEESafeAreaObserverView : UIView
+@property(nonatomic) BOOL measured;
 @end
 
 @implementation LEESafeAreaObserverView
-
 - (instancetype)initWithFrame:(CGRect)frame {
-    if (self = [super initWithFrame:frame]) {
+    if ((self = [super initWithFrame:frame])) {
         self.userInteractionEnabled = NO;
-        self.hidden = NO; // hidden=YES отключает обновление safe area
-        self.alpha = 0.0;
-        self.backgroundColor = UIColor.clearColor;
+        // hidden would prevent safe-area notifications.
+        self.alpha = 0;
         self.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     }
     return self;
 }
-
-- (void)lee_publish {
-    // До attach к окну и до первого layout safeAreaInsets равны нулю. Проверено на
-    // симуляторе: без этой проверки observer публикует gen с нулями между двумя
-    // верными, и JS получает лишний ре-рендер с нулевыми инсетами.
-    if (self.window == nil || CGRectIsEmpty(self.bounds))
+- (void)publish {
+    if (!self.window || !self.superview || CGRectIsEmpty(self.bounds))
         return;
-    LEESnapshot current = LEESafeAreaStore.snapshot;
-    [LEESafeAreaStore publishInsets:self.safeAreaInsets keyboardHeight:current.keyboardHeight];
+    self.measured = YES;
+    [LEESafeAreaStore publishView:self.superview insets:self.safeAreaInsets];
 }
-
 - (void)safeAreaInsetsDidChange {
     [super safeAreaInsetsDidChange];
-    [self lee_publish];
+    [self publish];
 }
-
 - (void)layoutSubviews {
     [super layoutSubviews];
-    [self lee_publish];
+    [self publish];
 }
-
-// didMoveToWindow намеренно не публикует: в этот момент окно уже есть, bounds
-// непустые, а safeAreaInsets ещё нулевые до первого layout. На симуляторе это
-// давало gen с нулями между двумя верными. layoutSubviews придёт сразу следом.
-
+- (void)didMoveToWindow {
+    [super didMoveToWindow];
+    self.measured = NO;
+    // Wait for layout: didMoveToWindow can expose temporary zero safe-area insets.
+}
 @end
-
-#pragma mark - Lifecycle hook
 
 @interface LEELifecycleHook : NSObject <LynxViewLifecycle>
 @end
-
 @implementation LEELifecycleHook
-
-+ (instancetype)shared {
-    static LEELifecycleHook *hook = nil;
-    static dispatch_once_t once;
-    dispatch_once(&once, ^{
-        hook = [LEELifecycleHook new];
-    });
-    return hook;
-}
-
 - (void)lynxViewDidStartLoading:(LynxView *)view {
-    LEELog(@"lynxViewDidStartLoading view=%p window=%p main=%d", view, view.window,
-           NSThread.isMainThread);
     if (!NSThread.isMainThread) {
-        // Хост зовёт loadTemplate с главной очереди (Sparkling: SPKWrapperLynxView.load()).
-        // Если нет, регистрируем без чтения окна: значение доедет из кеша.
-        [LEESafeAreaStore registerLynxView:view];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [LEESafeAreaStore registerLynxView:view];
+            [LEESafeAreaStore attachObserverToLynxView:view];
+        });
         return;
     }
-    [LEESafeAreaStore lee_warmFromWindow:view.window];
     [LEESafeAreaStore registerLynxView:view];
     [LEESafeAreaStore attachObserverToLynxView:view];
 }
-
 @end
 
-static LEESnapshot gSnapshot = {0, 0, 0, 0, 0, 0};
-static NSHashTable<UIView *> *gViews = nil;
-static NSHashTable *gContexts = nil;
-static os_unfair_lock gLock = OS_UNFAIR_LOCK_INIT;
+static BOOL containsFirstResponder(UIView *view) {
+    if (view.isFirstResponder)
+        return YES;
+    for (UIView *child in view.subviews) {
+        if (containsFirstResponder(child))
+            return YES;
+    }
+    return NO;
+}
 
 @implementation LEESafeAreaStore
-
-/**
- * +load выполняется при загрузке образа, задолго до первого LynxView.
- * Здесь поднимаем ОКОННЫЙ уровень точности: keyWindow.safeAreaInsets.
- * Точный, повью-шный уровень включится позже, когда появится модуль и мы
- * вставим LEESafeAreaObserverView в сам LynxView.
- */
 + (void)load {
-    gViews = [NSHashTable weakObjectsHashTable];
-    gContexts = [NSHashTable weakObjectsHashTable];
-    NSNotificationCenter *nc = NSNotificationCenter.defaultCenter;
-    // Не из +load напрямую: LynxEnv.sharedInstance зовёт initDevTool по рефлексии,
-    // а на момент нашего +load чужие образы могут быть ещё не загружены.
-    [nc addObserver:self
-           selector:@selector(lee_onDidFinishLaunching:)
-               name:UIApplicationDidFinishLaunchingNotification
-             object:nil];
-    // Одного safeAreaInsetsDidChange мало: react-native-safe-area-context
-    // в проде слушает весь этот набор, отдельные случаи иначе не ловятся.
+    snapshots = [NSMapTable weakToStrongObjectsMapTable];
+    views = [NSHashTable weakObjectsHashTable];
+    contexts = [NSHashTable weakObjectsHashTable];
+    NSNotificationCenter *center = NSNotificationCenter.defaultCenter;
+    [center addObserver:self
+               selector:@selector(didFinishLaunching:)
+                   name:UIApplicationDidFinishLaunchingNotification
+                 object:nil];
     for (NSNotificationName name in @[
-             UIApplicationDidBecomeActiveNotification,
-             UIWindowDidBecomeVisibleNotification,
-             UIKeyboardDidShowNotification,
-             UIKeyboardDidHideNotification,
-             UIKeyboardDidChangeFrameNotification,
+             UIApplicationDidBecomeActiveNotification, UIWindowDidBecomeVisibleNotification,
+             UIKeyboardDidShowNotification, UIKeyboardDidHideNotification,
+             UIKeyboardDidChangeFrameNotification
          ]) {
-        [nc addObserver:self selector:@selector(lee_resync:) name:name object:nil];
+        [center addObserver:self selector:@selector(resync:) name:name object:nil];
     }
 }
-
-+ (void)lee_onDidFinishLaunching:(NSNotification *)note {
++ (void)didFinishLaunching:(NSNotification *)notification {
+    (void)notification;
     [self installLifecycleHook];
 }
-
 + (void)installLifecycleHook {
-    static BOOL installed = NO;
-    if (installed)
-        return;
     if (!NSThread.isMainThread) {
         dispatch_async(dispatch_get_main_queue(), ^{
             [self installLifecycleHook];
         });
         return;
     }
-    installed = YES;
-    [[LynxEnv sharedInstance].lifecycleDispatcher addLifecycleClient:[LEELifecycleHook shared]];
-    LEELog(@"lifecycle hook installed");
+    static LEELifecycleHook *hook;
+    if (hook)
+        return;
+    hook = [LEELifecycleHook new];
+    [[LynxEnv sharedInstance].lifecycleDispatcher addLifecycleClient:hook];
 }
-
-+ (UIWindow *)lee_keyWindow {
-    UIWindow *window = nil;
-    if (@available(iOS 13.0, *)) {
-        for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
-            if (![scene isKindOfClass:UIWindowScene.class])
-                continue;
-            for (UIWindow *w in ((UIWindowScene *)scene).windows) {
-                if (w.isKeyWindow) {
-                    window = w;
-                    break;
-                }
-            }
-            if (window)
-                break;
++ (NSDictionary<NSString *, id> *)snapshotDictionaryForView:(UIView *)view {
+    os_unfair_lock_lock(&snapshotLock);
+    NSDictionary *value = view ? [snapshots objectForKey:view] : nil;
+    os_unfair_lock_unlock(&snapshotLock);
+    return value ?: @{
+        @"top" : @0,
+        @"right" : @0,
+        @"bottom" : @0,
+        @"left" : @0,
+        @"keyboardHeight" : @0,
+        @"generation" : @0,
+        @"edgeToEdge" : @YES
+    };
+}
++ (void)publishView:(UIView *)view insets:(UIEdgeInsets)insets {
+    NSCAssert(NSThread.isMainThread, @"UI ownership requires main queue");
+    CGFloat keyboard = 0;
+    if (keyboardWindow && view.window == keyboardWindow && !CGRectIsEmpty(keyboardFrame)) {
+        CGRect frame = [keyboardWindow convertRect:keyboardFrame fromWindow:nil];
+        CGRect local = [view convertRect:frame fromView:keyboardWindow];
+        CGRect overlap = CGRectIntersection(view.bounds, local);
+        if (!CGRectIsNull(overlap))
+            keyboard = CGRectGetHeight(overlap);
+    }
+    NSDictionary *current = [self snapshotDictionaryForView:view];
+    if ([current[@"generation"] integerValue] > 0 && [current[@"top"] doubleValue] == insets.top &&
+        [current[@"right"] doubleValue] == insets.right &&
+        [current[@"bottom"] doubleValue] == insets.bottom &&
+        [current[@"left"] doubleValue] == insets.left &&
+        [current[@"keyboardHeight"] doubleValue] == keyboard)
+        return;
+    NSDictionary *value = @{
+        @"top" : @(insets.top),
+        @"right" : @(insets.right),
+        @"bottom" : @(insets.bottom),
+        @"left" : @(insets.left),
+        @"keyboardHeight" : @(keyboard),
+        @"generation" : @([current[@"generation"] integerValue] + 1),
+        // Declared host contract, not a measured claim about status-bar configuration.
+        @"edgeToEdge" : @YES
+    };
+    os_unfair_lock_lock(&snapshotLock);
+    [snapshots setObject:value forKey:view];
+    os_unfair_lock_unlock(&snapshotLock);
+    [(LynxView *)view updateGlobalPropsWithDictionary:@{@"safeArea" : value}];
+    for (LynxContext *context in contexts.allObjects) {
+        if ([context getLynxView] == view) {
+            [context sendGlobalEvent:@"safeareainsetschange" withParams:@[ value ]];
         }
     }
-    if (!window) {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-        window = UIApplication.sharedApplication.keyWindow;
-#pragma clang diagnostic pop
+}
++ (void)registerLynxView:(UIView *)view {
+    NSCAssert(NSThread.isMainThread, @"Registry requires main queue");
+    if (![view isKindOfClass:LynxView.class])
+        return;
+    [views addObject:view];
+    // Never guess a global keyWindow: another scene may own it.
+    if ([[self snapshotDictionaryForView:view][@"generation"] integerValue] == 0 && view.window) {
+        [self publishView:view insets:view.window.safeAreaInsets];
     }
-    return window;
 }
-
-/** Прогрев кеша до первого LynxView: окно view, иначе key window. */
-+ (void)lee_warmFromWindow:(UIWindow *)window {
-    UIWindow *w = window ?: [self lee_keyWindow];
-    if (!w)
-        return;
-    UIEdgeInsets insets = w.safeAreaInsets;
-    BOOL zero = UIEdgeInsetsEqualToEdgeInsets(insets, UIEdgeInsetsZero);
-    // Нули публикуем только если ничего лучше ещё не было.
-    if (zero && [self snapshot].generation > 0)
-        return;
-    [self publishInsets:insets keyboardHeight:[self snapshot].keyboardHeight];
++ (void)registerContext:(id)context {
+    NSCAssert(NSThread.isMainThread, @"Registry requires main queue");
+    if (context)
+        [contexts addObject:context];
 }
-
-+ (void)attachObserverToLynxView:(UIView *)lynxView {
-    if (!lynxView)
-        return;
-    for (UIView *sub in lynxView.subviews) {
-        if ([sub isKindOfClass:LEESafeAreaObserverView.class])
++ (void)attachObserverToLynxView:(UIView *)view {
+    NSCAssert(NSThread.isMainThread, @"UIKit requires main queue");
+    for (UIView *child in view.subviews) {
+        if ([child isKindOfClass:LEESafeAreaObserverView.class])
             return;
     }
-    LEESafeAreaObserverView *observer =
-        [[LEESafeAreaObserverView alloc] initWithFrame:lynxView.bounds];
-    [lynxView addSubview:observer];
-    [lynxView sendSubviewToBack:observer];
-    [observer lee_publish];
+    LEESafeAreaObserverView *observer = [[LEESafeAreaObserverView alloc] initWithFrame:view.bounds];
+    [view addSubview:observer];
+    [view sendSubviewToBack:observer];
 }
-
-+ (void)lee_resync:(NSNotification *)note {
++ (void)resyncView:(UIView *)view {
+    NSCAssert(NSThread.isMainThread, @"UIKit requires main queue");
+    if (!view.window)
+        return;
+    for (UIView *child in view.subviews) {
+        if ([child isKindOfClass:LEESafeAreaObserverView.class]) {
+            LEESafeAreaObserverView *observer = (LEESafeAreaObserverView *)child;
+            if (observer.measured)
+                [observer publish];
+            else
+                [observer setNeedsLayout];
+            return;
+        }
+    }
+}
++ (void)resync:(NSNotification *)notification {
     if (!NSThread.isMainThread) {
         dispatch_async(dispatch_get_main_queue(), ^{
-            [self lee_resync:note];
+            [self resync:notification];
         });
         return;
     }
-    UIWindow *window = [self lee_keyWindow];
-    if (!window)
-        return;
-
-    CGFloat keyboard = 0;
-    NSValue *frameValue = note.userInfo[UIKeyboardFrameEndUserInfoKey];
-    if (frameValue) {
-        CGRect frame = [window convertRect:frameValue.CGRectValue fromWindow:nil];
-        CGFloat overlap = CGRectGetMaxY(window.bounds) - CGRectGetMinY(frame);
-        keyboard = MAX(0, MIN(overlap, CGRectGetHeight(window.bounds)));
-        if ([note.name isEqualToString:UIKeyboardDidHideNotification])
-            keyboard = 0;
-    } else {
-        keyboard = gSnapshot.keyboardHeight;
-    }
-    [self publishInsets:window.safeAreaInsets keyboardHeight:keyboard];
-}
-
-+ (LEESnapshot)snapshot {
-    os_unfair_lock_lock(&gLock);
-    LEESnapshot copy = gSnapshot;
-    os_unfair_lock_unlock(&gLock);
-    return copy;
-}
-
-+ (NSDictionary<NSString *, id> *)snapshotDictionary {
-    LEESnapshot s = [self snapshot];
-    return @{
-        @"top" : @(s.top),
-        @"right" : @(s.right),
-        @"bottom" : @(s.bottom),
-        @"left" : @(s.left),
-        @"keyboardHeight" : @(s.keyboardHeight),
-        @"generation" : @(s.generation),
-        // Контейнер Sparkling пинит LynxView к сырому view контроллера
-        // (make.left.right.bottom.equalTo(self.view)), а схема шаблона несёт
-        // hide_status_bar=1, поэтому topOffset == 0. Окно всегда edge-to-edge.
-        @"edgeToEdge" : @YES,
-    };
-}
-
-+ (void)publishInsets:(UIEdgeInsets)insets keyboardHeight:(CGFloat)keyboard {
-    NSCAssert(NSThread.isMainThread, @"publishInsets only from the main queue");
-    os_unfair_lock_lock(&gLock);
-    BOOL same = gSnapshot.top == insets.top && gSnapshot.right == insets.right &&
-                gSnapshot.bottom == insets.bottom && gSnapshot.left == insets.left &&
-                gSnapshot.keyboardHeight == keyboard;
-    if (same && gSnapshot.generation != 0) {
-        os_unfair_lock_unlock(&gLock);
-        return;
-    }
-    gSnapshot = (LEESnapshot){insets.top,  insets.right, insets.bottom,
-                              insets.left, keyboard,     gSnapshot.generation + 1};
-    os_unfair_lock_unlock(&gLock);
-    LEELog(@"publish gen=%ld top=%.1f bottom=%.1f left=%.1f right=%.1f kb=%.1f views=%lu",
-           (long)gSnapshot.generation, insets.top, insets.bottom, insets.left, insets.right,
-           keyboard, (unsigned long)gViews.count);
-
-    NSDictionary *dict = [self snapshotDictionary];
-    for (UIView *view in gViews.allObjects) {
-        if ([view isKindOfClass:LynxView.class]) {
-            // Мерж по верхнему ключу на iOS НЕ ПРОВЕРЕН (T33): движок заменяет,
-            // мержит обвязка. Проверить на устройстве в день 6 до выпуска.
-            [(LynxView *)view updateGlobalPropsWithDictionary:@{@"safeArea" : dict}];
+    if ([notification.name isEqualToString:UIKeyboardDidHideNotification]) {
+        keyboardWindow = nil;
+        keyboardFrame = CGRectZero;
+    } else if (notification.userInfo[UIKeyboardFrameEndUserInfoKey]) {
+        keyboardFrame = [notification.userInfo[UIKeyboardFrameEndUserInfoKey] CGRectValue];
+        // Keyboard notifications do not identify a scene. Attribute only to a verified
+        // first-responder window among registered views; never broadcast keyboard height.
+        keyboardWindow = nil;
+        for (UIView *view in views.allObjects) {
+            if (view.window && containsFirstResponder(view.window)) {
+                keyboardWindow = view.window;
+                break;
+            }
         }
     }
-    for (id ctx in gContexts.allObjects) {
-        // Только дельты: sendGlobalEvent до готовности рантайма дропается.
-        [(LynxContext *)ctx sendGlobalEvent:@"safeareainsetschange" withParams:@[ dict ]];
-    }
+    for (UIView *view in views.allObjects)
+        [self resyncView:view];
 }
-
-+ (void)registerLynxView:(UIView *)lynxView {
-    if (!lynxView)
-        return;
-    BOOL fresh = ![gViews containsObject:lynxView];
-    [gViews addObject:lynxView];
-    LEELog(@"registerLynxView view=%p fresh=%d gen=%ld", lynxView, fresh,
-           (long)[self snapshot].generation);
-    if (fresh && [self snapshot].generation > 0 && [lynxView isKindOfClass:LynxView.class]) {
-        [(LynxView *)lynxView
-            updateGlobalPropsWithDictionary:@{@"safeArea" : [self snapshotDictionary]}];
-    }
-}
-
-+ (void)registerContext:(id)lynxContext {
-    if (lynxContext)
-        [gContexts addObject:lynxContext];
-}
-
 @end

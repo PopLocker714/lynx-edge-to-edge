@@ -47,6 +47,18 @@ describe('fromWire: edgeToEdge', () => {
 })
 
 describe('порядок чтения', () => {
+    it('keeps warm per-view globalProps when the native owner is not resolved yet', async () => {
+        const fake = createFakeEdgeToEdge({
+            initialGlobalProps: { top: 47, bottom: 34, generation: 3 },
+            native: { top: 0, bottom: 0, generation: 0 },
+        })
+        setNativeModule(fake)
+        expect(getSafeAreaInsets().top).toBe(47)
+        await refreshSafeArea()
+        expect(getSafeAreaSnapshot().generation).toBe(3)
+        expect(getSafeAreaInsets().bottom).toBe(34)
+    })
+
     it('globalProps раньше нативного геттера', () => {
         const fake = createFakeEdgeToEdge({
             initialGlobalProps: { top: 47, bottom: 24, generation: 1 },

@@ -37,6 +37,7 @@ android {
 }
 
 dependencies {
+    testImplementation("junit:junit:4.13.2")
     // compileOnly, не implementation: Lynx поставляет хост, а отгрузка его
     // как implementation рискует duplicate-class.
     compileOnly("org.lynxsdk.lynx:lynx:4.0.1")

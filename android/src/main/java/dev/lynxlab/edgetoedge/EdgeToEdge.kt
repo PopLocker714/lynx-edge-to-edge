@@ -6,7 +6,6 @@ import android.content.res.Configuration
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewTreeObserver
@@ -33,8 +32,6 @@ import java.util.WeakHashMap
  *  - onActivityResumed: перенакатываем окно (OEM сбрасывают его при возврате)
  */
 object EdgeToEdge {
-    private const val TAG = "LynxEdgeToEdge"
-
     // Скримы взяты 1-в-1 из androidx EdgeToEdge.kt / RN WindowUtil.kt.
     private const val LIGHT_NAV_SCRIM = 0xE6FFFFFF.toInt()
     private const val DARK_NAV_SCRIM = 0x801B1B1B.toInt()
@@ -87,6 +84,7 @@ object EdgeToEdge {
     /** Диспатчится Application'ом на UI-потоке из Activity.onCreate. */
     fun attach(activity: Activity) {
         applyWindow(activity)
+        if (hooks.containsKey(activity)) return
         val decor = activity.window?.decorView ?: return
         // OnPreDrawListener, а не setOnApplyWindowInsetsListener: у View РОВНО ОДИН
         // слот слушателя, второй пакет молча выигрывает. У ViewTreeObserver список.
@@ -109,6 +107,8 @@ object EdgeToEdge {
                 ?.removeOnPreDrawListener(hook)
         }
         scanBudget.remove(activity)
+        views.remove(activity)
+        bars.remove(activity)
     }
 
     /**
@@ -159,27 +159,24 @@ object EdgeToEdge {
     }
 
     /** Иконки баров и их видимость. Под enforcement на 35+ это продолжает работать. */
-    fun applyBars(
-        activity: Activity,
-        statusLight: Boolean? = null,
-        navLight: Boolean? = null,
-    ) {
+    fun applyBars(activity: Activity) {
         val window = activity.window ?: return
-        // Контроллер конструируем заново каждый раз и перенакатываем hidden:
-        // свежий WindowInsetsControllerCompat теряет состояние скрытия (zoontek #66).
-        val c = WindowInsetsControllerCompat(window, window.decorView)
-        c.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        statusLight?.let { c.isAppearanceLightStatusBars = it }
-        navLight?.let { c.isAppearanceLightNavigationBars = it }
-        if (statusBarHidden) {
-            c.hide(WindowInsetsCompat.Type.statusBars())
+        val state = bars.getOrPut(activity) { Bars() }
+        val controller = WindowInsetsControllerCompat(window, window.decorView)
+        controller.systemBarsBehavior =
+            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        controller.isAppearanceLightStatusBars = darkIcons(state.statusStyle, isNight(activity))
+        controller.isAppearanceLightNavigationBars =
+            darkIcons(state.navigationStyle, isNight(activity))
+        if (state.statusHidden) {
+            controller.hide(WindowInsetsCompat.Type.statusBars())
         } else {
-            c.show(WindowInsetsCompat.Type.statusBars())
+            controller.show(WindowInsetsCompat.Type.statusBars())
         }
-        if (navigationBarHidden) {
-            c.hide(WindowInsetsCompat.Type.navigationBars())
+        if (state.navigationHidden) {
+            controller.hide(WindowInsetsCompat.Type.navigationBars())
         } else {
-            c.show(WindowInsetsCompat.Type.navigationBars())
+            controller.show(WindowInsetsCompat.Type.navigationBars())
         }
     }
 
@@ -254,22 +251,55 @@ object EdgeToEdge {
         force: Boolean,
     ) {
         val decor = activity.window?.decorView ?: return
-        val changed = readSnapshot(activity)?.let(SafeAreaStore::publish) ?: false
+        val windowSnapshot = readSnapshot(activity) ?: return
+        val registered =
+            views.getOrPut(activity) {
+                java.util.Collections.newSetFromMap(WeakHashMap<LynxView, Boolean>())
+            }
         val budget = scanBudget[activity] ?: 0
-        if (!force && !changed && budget <= 0) return
+        if (force || budget > 0) collectLynxViews(decor, registered)
         if (budget > 0) scanBudget[activity] = budget - 1
-        collectLynxViews(decor)
+        val density = activity.resources.displayMetrics.density
+        for (view in registered.toList()) {
+            // A view moved to another host is owned by that host's next scan.
+            if (com.lynx.tasm.utils.ContextUtils
+                    .getActivity(view.context) !== activity
+            ) {
+                registered.remove(view)
+                continue
+            }
+            val next =
+                if (view.width > 0 && view.height > 0 && view.isAttachedToWindow) {
+                    val position = IntArray(2)
+                    view.getLocationInWindow(position)
+                    relativeSnapshot(
+                        windowSnapshot,
+                        position[0] / density,
+                        position[1] / density,
+                        view.width / density,
+                        view.height / density,
+                        decor.width / density,
+                        decor.height / density,
+                    )
+                } else {
+                    // Sparkling's full-window initial layout: owner window seed before first attach.
+                    // Embedded hosts obtain precise values after layout; no other window is consulted.
+                    windowSnapshot
+                }
+            SafeAreaStore.publish(view, next)
+        }
     }
 
-    private fun collectLynxViews(root: View) {
+    private fun collectLynxViews(
+        root: View,
+        registered: MutableSet<LynxView>,
+    ) {
         if (root is LynxView) {
-            if (SafeAreaStore.registerView(root)) {
-                Log.i(TAG, "LynxView registered, safeArea gen=${SafeAreaStore.snapshot.generation}")
-            }
+            registered.add(root)
             return
         }
         if (root is ViewGroup) {
-            for (i in 0 until root.childCount) collectLynxViews(root.getChildAt(i))
+            for (i in 0 until root.childCount) collectLynxViews(root.getChildAt(i), registered)
         }
     }
 }

@@ -22,6 +22,8 @@ export interface SystemBarsProps {
 const stack: SystemBarsEntry[] = []
 let flushScheduled = false
 let lastPushed: SystemBarsEntry | null = null
+let imperativeStyle: SystemBarsEntry | null = null
+let imperativeHidden: SystemBarsEntry | null = null
 
 export function createEntry(props: SystemBarsProps): SystemBarsEntry {
     const { style, hidden } = props
@@ -86,6 +88,7 @@ function schedule(): void {
 }
 
 export function pushStackEntry(props: SystemBarsProps): SystemBarsEntry {
+    'background only'
     const entry = createEntry(props)
     stack.push(entry)
     schedule()
@@ -93,12 +96,14 @@ export function pushStackEntry(props: SystemBarsProps): SystemBarsEntry {
 }
 
 export function popStackEntry(entry: SystemBarsEntry): void {
+    'background only'
     const i = stack.indexOf(entry)
     if (i !== -1) stack.splice(i, 1)
     schedule()
 }
 
 export function replaceStackEntry(entry: SystemBarsEntry, props: SystemBarsProps): SystemBarsEntry {
+    'background only'
     const next = createEntry(props)
     const i = stack.indexOf(entry)
     if (i !== -1) stack[i] = next
@@ -109,12 +114,16 @@ export function replaceStackEntry(entry: SystemBarsEntry, props: SystemBarsProps
 
 /** Sets Android system-bar icon style. No native effect on iOS in v1. */
 export function setSystemBarStyle(style: SystemBarStyle): void {
-    pushStackEntry({ style })
+    'background only'
+    if (imperativeStyle) popStackEntry(imperativeStyle)
+    imperativeStyle = pushStackEntry({ style })
 }
 
 /** Sets Android system-bar visibility. No native effect on iOS in v1. */
 export function setSystemBarHidden(hidden: boolean): void {
-    pushStackEntry({ hidden })
+    'background only'
+    if (imperativeHidden) popStackEntry(imperativeHidden)
+    imperativeHidden = pushStackEntry({ hidden })
 }
 
 /** Только для тестов. */
@@ -122,4 +131,6 @@ export function resetSystemBarsForTests(): void {
     stack.length = 0
     flushScheduled = false
     lastPushed = null
+    imperativeStyle = null
+    imperativeHidden = null
 }

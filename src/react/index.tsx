@@ -20,13 +20,14 @@
  * значение читается синхронно из lynx.__globalProps на первом кадре.
  */
 import type { ReactNode } from '@lynx-js/react'
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from '@lynx-js/react'
+import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from '@lynx-js/react'
 import type {
     Edge,
     EdgeInsets,
     SafeAreaMode,
     SafeAreaSnapshot,
     SystemBarsProps,
+    SystemBarsEntry,
 } from '@lynx-lab/edge-to-edge'
 import {
     getSafeAreaSnapshot,
@@ -113,10 +114,18 @@ export function SafeAreaView(props: SafeAreaViewProps) {
 
 /** Android system-bar controls via the entry stack; no native effect on iOS in v1. */
 export function SystemBars(props: SystemBarsProps) {
-    const [entry, setEntry] = useState(() => pushStackEntry(props))
+    const entry = useRef<SystemBarsEntry | null>(null)
     useEffect(() => {
-        setEntry((current) => replaceStackEntry(current, props))
+        entry.current = entry.current
+            ? replaceStackEntry(entry.current, props)
+            : pushStackEntry(props)
     }, [props.style, props.hidden])
-    useEffect(() => () => popStackEntry(entry), [entry])
+    useEffect(
+        () => () => {
+            if (entry.current) popStackEntry(entry.current)
+            entry.current = null
+        },
+        []
+    )
     return null
 }

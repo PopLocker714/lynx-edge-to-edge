@@ -2,7 +2,6 @@ package dev.lynxlab.edgetoedge
 
 import com.lynx.react.bridge.JavaOnlyMap
 import com.lynx.tasm.LynxView
-import java.util.Collections
 import java.util.WeakHashMap
 
 /** Проволочная форма плоская, см. src/native.ts. Числа в dp. */
@@ -43,54 +42,26 @@ data class Snapshot(
         )
 }
 
-/**
- * Процесс-глобальный тёплый кеш плюс доставка в LynxView.
- *
- * Единственный канал доставки это updateGlobalProps. Пуш, сделанный до старта
- * JS-рантайма, BTSRuntime::OnGlobalPropsUpdated кладёт в init_global_props_,
- * и он приезжает в JS как НАЧАЛЬНОЕ значение lynx.__globalProps.safeArea.
- * Пуш после старта приходит событием __NotifyGlobalPropsUpdated, ReactLynx
- * превращает его в Object.assign плюс onGlobalPropsChanged. Отдельного
- * sendGlobalEvent не нужно (D8 в lynx-lab).
- *
- * Мерж по верхнему ключу делает LynxTemplateRender на Java-стороне, поэтому
- * чужие globalProps (Sparkling кладёт statusBarHeight, theme и прочее)
- * не затираются (T33).
- */
+/** Per-view cache. UI owns writes/delivery; bridge threads only read immutable snapshots. */
 object SafeAreaStore {
     const val GLOBAL_PROPS_KEY = "safeArea"
+    private val snapshots = WeakHashMap<LynxView, Snapshot>()
 
-    @Volatile
-    var snapshot: Snapshot = Snapshot()
-        private set
-
-    // Слабые ссылки: LynxView умирает вместе с Activity при повороте.
-    private val views: MutableSet<LynxView> =
-        Collections.newSetFromMap(WeakHashMap<LynxView, Boolean>())
-
-    /** Вызывается с UI-потока. Новичок сразу получает текущий снимок. */
     @Synchronized
-    fun registerView(view: LynxView): Boolean {
-        if (!views.add(view)) return false
-        if (snapshot.generation > 0) pushGlobalProps(view, snapshot)
-        return true
-    }
+    fun snapshotFor(view: LynxView?): Snapshot = snapshots[view] ?: Snapshot()
 
-    /** Только с UI-потока. Возвращает true, если значение изменилось. */
-    @Synchronized
-    fun publish(next: Snapshot): Boolean {
-        val current = snapshot
-        if (current.generation > 0 && current.sameValues(next)) return false
-        val stamped = next.copy(generation = current.generation + 1)
-        snapshot = stamped
-        for (view in views) pushGlobalProps(view, stamped)
-        return true
-    }
-
-    private fun pushGlobalProps(
+    fun publish(
         view: LynxView,
-        value: Snapshot,
-    ) {
-        runCatching { view.updateGlobalProps(mapOf(GLOBAL_PROPS_KEY to value.toPlainMap())) }
+        next: Snapshot,
+    ): Boolean {
+        val stamped =
+            synchronized(this) {
+                val current = snapshots[view] ?: Snapshot()
+                if (current.generation > 0 && current.sameValues(next)) return false
+                next.copy(generation = current.generation + 1).also { snapshots[view] = it }
+            }
+        // Do not hold the cache lock while entering Lynx. Updates merge only our top-level key.
+        view.updateGlobalProps(mapOf(GLOBAL_PROPS_KEY to stamped.toPlainMap()))
+        return true
     }
 }

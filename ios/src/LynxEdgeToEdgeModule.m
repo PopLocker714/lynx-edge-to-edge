@@ -29,7 +29,6 @@
 - (instancetype)initWithLynxContext:(LynxContext *)context {
     if (self = [super init]) {
         _context = context;
-        [LEESafeAreaStore registerContext:context];
         // Страховка для хостов, где UIApplicationDidFinishLaunching уже прошёл
         // до загрузки нашего образа (динамическая подгрузка библиотеки).
         [LEESafeAreaStore installLifecycleHook];
@@ -46,21 +45,23 @@
     LynxView *lynxView = [_context getLynxView];
     if (!lynxView)
         return;
+    [LEESafeAreaStore registerContext:_context];
     [LEESafeAreaStore registerLynxView:lynxView];
     [LEESafeAreaStore attachObserverToLynxView:lynxView];
+    [LEESafeAreaStore resyncView:lynxView];
 }
 
 #pragma mark - Мостовые методы
 
 /** Синхронно, без хопа: читает тёплый кеш, прогретый из +load. */
 - (NSDictionary *)getSnapshot {
-    return [LEESafeAreaStore snapshotDictionary];
+    return [LEESafeAreaStore snapshotDictionaryForView:[_context getLynxView]];
 }
 
 - (void)refresh:(LynxCallbackBlock)callback {
     dispatch_async(dispatch_get_main_queue(), ^{
         [self lee_attach];
-        callback([LEESafeAreaStore snapshotDictionary]);
+        callback([LEESafeAreaStore snapshotDictionaryForView:[self->_context getLynxView]]);
     });
 }
 
@@ -71,9 +72,13 @@
  * Home indicator are not equivalents of Android's system navigation bar.
  */
 - (void)setSystemBarStyle:(NSString *)statusBar navigationBar:(NSString *)navigationBar {
+    (void)statusBar;
+    (void)navigationBar;
 }
 
 - (void)setSystemBarHidden:(BOOL)statusBar navigationBar:(BOOL)navigationBar {
+    (void)statusBar;
+    (void)navigationBar;
 }
 
 @end

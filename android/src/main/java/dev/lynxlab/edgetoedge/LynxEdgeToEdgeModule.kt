@@ -27,9 +27,14 @@ class LynxEdgeToEdgeModule(
     context: LynxContext,
 ) : LynxContextModule(context) {
     init {
-        // Brownfield-хост, где ContentProvider не отработал: регистрируем LynxView
-        // отсюда, и globalProps начинают приезжать хотя бы после первого обращения JS.
-        context.lynxView?.let(SafeAreaStore::registerView)
+        UIThreadUtils.runOnUiThread { attachHost() }
+    }
+
+    private fun attachHost() {
+        val activity = ContextUtils.getActivity(mLynxContext) ?: return
+        EdgeToEdge.install(activity.application)
+        EdgeToEdge.attach(activity)
+        EdgeToEdge.scan(activity, force = true)
     }
 
     /**
@@ -38,23 +43,18 @@ class LynxEdgeToEdgeModule(
      * в AAR 4.0.1 и нет. Возврат JavaOnlyMap в whitelist LynxMethodWrapper.
      */
     @LynxMethod
-    fun getSnapshot(): JavaOnlyMap = SafeAreaStore.snapshot.toJavaOnlyMap()
+    fun getSnapshot(): JavaOnlyMap =
+        SafeAreaStore.snapshotFor(mLynxContext.lynxView).toJavaOnlyMap()
 
     /** Холодный путь. Callback, а не возврат: блокирующего хопа не существует. */
     @LynxMethod
     fun refresh(callback: Callback) {
-        // Activity никогда не кешировать: LynxContext это MutableContextWrapper,
-        // база переуказывается при переattach. Перерешаем каждый раз.
-        val activity = ContextUtils.getActivity(mLynxContext)
-        if (activity == null) {
-            callback.invoke(SafeAreaStore.snapshot.toJavaOnlyMap())
-            return
-        }
         UIThreadUtils.runOnUiThread {
-            EdgeToEdge.applyWindow(activity)
-            ViewCompat.requestApplyInsets(activity.window.decorView)
-            EdgeToEdge.scan(activity, force = true)
-            callback.invoke(SafeAreaStore.snapshot.toJavaOnlyMap())
+            attachHost()
+            ContextUtils.getActivity(mLynxContext)?.window?.decorView?.let {
+                ViewCompat.requestApplyInsets(it)
+            }
+            callback.invoke(SafeAreaStore.snapshotFor(mLynxContext.lynxView).toJavaOnlyMap())
         }
     }
 
@@ -64,19 +64,9 @@ class LynxEdgeToEdgeModule(
         statusBar: String,
         navigationBar: String,
     ) {
-        val activity = ContextUtils.getActivity(mLynxContext) ?: return
         UIThreadUtils.runOnUiThread {
-            val night = EdgeToEdge.isNight(activity)
-
-            // isAppearanceLight*Bars == true означает ТЁМНЫЕ иконки на светлом баре.
-            fun resolve(style: String): Boolean =
-                when (style) {
-                    "light" -> false // светлое содержимое → светлые иконки
-                    "dark" -> true
-                    "inverted" -> !night
-                    else -> night // "auto"
-                }
-            EdgeToEdge.applyBars(activity, resolve(statusBar), resolve(navigationBar))
+            val activity = ContextUtils.getActivity(mLynxContext) ?: return@runOnUiThread
+            EdgeToEdge.setStyle(activity, statusBar, navigationBar)
         }
     }
 
@@ -85,11 +75,9 @@ class LynxEdgeToEdgeModule(
         statusBar: Boolean,
         navigationBar: Boolean,
     ) {
-        val activity = ContextUtils.getActivity(mLynxContext) ?: return
         UIThreadUtils.runOnUiThread {
-            EdgeToEdge.statusBarHidden = statusBar
-            EdgeToEdge.navigationBarHidden = navigationBar
-            EdgeToEdge.applyBars(activity)
+            val activity = ContextUtils.getActivity(mLynxContext) ?: return@runOnUiThread
+            EdgeToEdge.setHidden(activity, statusBar, navigationBar)
         }
     }
 }

@@ -128,3 +128,43 @@ describe('стек и батчинг', () => {
         ])
     })
 })
+
+describe('imperative entry ownership', () => {
+    it('moves only the invoked field above component entries', async () => {
+        const fake = createFakeEdgeToEdge()
+        setNativeModule(fake)
+        setSystemBarStyle('light')
+        setSystemBarHidden(true)
+        let component = pushStackEntry({ style: 'dark', hidden: false })
+        await tick()
+        setSystemBarStyle('inverted')
+        await tick()
+        expect(fake.barCalls.at(-2)?.statusBar).toBe('inverted')
+        expect(fake.barCalls.at(-1)?.statusBar).toBe(false)
+        component = replaceStackEntry(component, { style: 'auto', hidden: false })
+        await tick()
+        expect(fake.barCalls.at(-2)?.statusBar).toBe('inverted')
+        setSystemBarHidden(true)
+        await tick()
+        expect(fake.barCalls.at(-1)?.statusBar).toBe(true)
+        popStackEntry(component)
+        await tick()
+        expect(fake.barCalls.at(-2)?.statusBar).toBe('inverted')
+        expect(fake.barCalls.at(-1)?.statusBar).toBe(true)
+    })
+
+    it('retains latest imperative values after repeated updates and component teardown', async () => {
+        const fake = createFakeEdgeToEdge()
+        setNativeModule(fake)
+        for (let index = 0; index < 1000; index++) {
+            setSystemBarStyle(index % 2 ? 'dark' : 'light')
+            setSystemBarHidden(index % 2 === 1)
+        }
+        const component = pushStackEntry({ style: 'auto', hidden: false })
+        await tick()
+        popStackEntry(component)
+        await tick()
+        expect(fake.barCalls.at(-2)?.statusBar).toBe('dark')
+        expect(fake.barCalls.at(-1)?.statusBar).toBe(true)
+    })
+})
