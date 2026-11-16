@@ -34,10 +34,15 @@ android {
     kotlinOptions {
         jvmTarget = "11"
     }
+    lint {
+        warningsAsErrors = providers.gradleProperty("lynxEdgeStrictChecks").orNull == "true"
+        abortOnError = true
+    }
 }
 
 dependencies {
     testImplementation("junit:junit:4.13.2")
+    testCompileOnly("org.lynxsdk.lynx:lynx:4.0.1")
     // compileOnly, не implementation: Lynx поставляет хост, а отгрузка его
     // как implementation рискует duplicate-class.
     compileOnly("org.lynxsdk.lynx:lynx:4.0.1")
@@ -52,7 +57,20 @@ dependencies {
     // у хоста (1.15.0 требует 35). androidx.activity НЕ берём: appcompat 1.6.1
     // тянет activity 1.6.0 без enableEdgeToEdge(), а 1.10.x требует compileSdk 35.
     // Ручной путь всё равно обязателен для не-ComponentActivity хостов.
+    // Preserve host compileSdk 34 compatibility. Owner: Lynx Lab; review 2026-12-16.
+    //noinspection GradleDependency
     implementation("androidx.core:core:1.13.1")
 
     kapt("org.lynxsdk.lynx:lynx-processor:4.0.1")
+}
+
+if (providers.gradleProperty("lynxEdgeStrictChecks").orNull == "true") {
+    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+        @Suppress("DEPRECATION") // Keep the host KGP 1.8-compatible DSL.
+        kotlinOptions {
+            // KGP 2.0.21 kapt supports 1.9; standalone checks only.
+            languageVersion = "1.9"
+            allWarningsAsErrors = true
+        }
+    }
 }

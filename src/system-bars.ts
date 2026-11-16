@@ -15,8 +15,14 @@ export interface SystemBarsEntry {
 
 /** Android system-bar controls. Native setters are no-ops on iOS in v1. */
 export interface SystemBarsProps {
-    style?: SystemBarStyle | { statusBar?: SystemBarStyle; navigationBar?: SystemBarStyle }
-    hidden?: boolean | { statusBar?: boolean; navigationBar?: boolean }
+    style?:
+        | SystemBarStyle
+        | { statusBar?: SystemBarStyle | undefined; navigationBar?: SystemBarStyle | undefined }
+        | undefined
+    hidden?:
+        | boolean
+        | { statusBar?: boolean | undefined; navigationBar?: boolean | undefined }
+        | undefined
 }
 
 const stack: SystemBarsEntry[] = []

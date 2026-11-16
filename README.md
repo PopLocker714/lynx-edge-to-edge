@@ -1,30 +1,30 @@
 # @lynx-lab/edge-to-edge
 
-> **English** · [Русский](./README.ru.md)
+> **Pre-release / candidate.** Native ownership was changed in this revision. Historical
+> device results do not establish readiness of this artifact; the current consumer matrix is
+> [documented separately](./docs/compatibility.md).
 
-[![CI](https://github.com/PopLocker714/lynx-edge-to-edge/actions/workflows/ci.yml/badge.svg)](https://github.com/PopLocker714/lynx-edge-to-edge/actions/workflows/ci.yml)
-[![license](https://img.shields.io/github/license/PopLocker714/lynx-edge-to-edge?color=blue)](./LICENSE)
+## Platform support
 
-Safe area insets, edge-to-edge window and system bars for [Lynx](https://lynxjs.org).
-`react-native-edge-to-edge` plus `react-native-safe-area-context`, in one package.
+| Capability | Android | iOS |
+|---|---|---|
+| Safe-area updates / rotation | Implemented; per view | Implemented; per view |
+| Keyboard overlap | API 30+; zero below | Implemented; multi-scene/floating QA pending |
+| System-bar style / visibility | Implemented | No-op; native host controls status bar |
+| Early globalProps | Owner-window seed, then precise view geometry | Attached owner-window seed, then precise view geometry |
 
-> **Status: pre-release.** The API can still move before 1.0. Everything below is
-> verified on a Pixel 9 (Android 17), an Android 16 emulator and an iPhone 17 simulator
-> (iOS 26.5) against the stock Sparkling `rc` template and Lynx 3.9.0. The evidence
-> lives in [lynx-lab](https://github.com/PopLocker714/lynx-lab).
+| Checked profile | Status for this revision |
+|---|---|
+| Sparkling 2.1.0-rc.36 / Lynx 3.9 / ReactLynx 0.125 / Rsbuild 2 | Candidate; final consumer device QA pending |
+| Historical ReactLynx 0.116 / Rsbuild 1 | Historical evidence only |
+| Other Lynx hosts / minimum OS | Unverified |
 
-## Why
+## Purpose
 
-`env(safe-area-inset-*)` is always `0` on Android: the setter is stripped from
-`liblynx.so` and `ENV` is not registered as a dynamic style dependency in the engine
-([lynx-family/lynx#299](https://github.com/lynx-family/lynx/issues/299)). Nothing in
-the ecosystem enables edge-to-edge on Android, and on iOS the insets are read once
-and never updated on rotation.
-
-This package pushes the insets into `lynx.__globalProps.safeArea` *before the JS
-runtime starts*, so the very first frame already has the right numbers on both
-threads. Updates arrive through the same channel. Migrating existing CSS is a
-search-and-replace: `env(` → `var(--`.
+The package delivers changing insets through `lynx.__globalProps.safeArea` and CSS custom properties.
+An early seed belongs only to the known owner window; embedded views become precise after layout.
+An unattached iOS view waits for attach/layout. First-frame behavior is checked per host;
+there is no universal first-frame guarantee for arbitrary geometry.
 
 ## Install
 
@@ -32,8 +32,8 @@ search-and-replace: `env(` → `var(--`.
 bun add @lynx-lab/edge-to-edge
 ```
 
-**Android** — nothing else. A `ContentProvider` merged from the library manifest
-enables edge-to-edge and starts publishing insets before `Application.onCreate`.
+**Android** — the manifest `ContentProvider` installs Activity observation before
+`Application.onCreate`; it publishes when a window/view is available.
 
 One thing the Lynx Gradle plugin gets wrong: the generated autolink registry
 (`app/build/generated/source/lynxLibraryRegistry/`) is not regenerated when you add
@@ -52,12 +52,12 @@ Requirements: Lynx ≥ 3.9.0, ReactLynx ≥ 0.116, Autolink enabled in the host
 import { SafeAreaProvider, SafeAreaView, SystemBars } from '@lynx-lab/edge-to-edge/react'
 
 export function App() {
-  return (
-    <SafeAreaProvider>
-      <SystemBars style="auto" />
-      <Screen />
-    </SafeAreaProvider>
-  )
+    return (
+        <SafeAreaProvider>
+            <SystemBars style="auto" />
+            <SafeAreaView><view /></SafeAreaView>
+        </SafeAreaProvider>
+    )
 }
 ```
 
@@ -72,10 +72,10 @@ Then either CSS or JS, both reactive:
 ```tsx
 import { useSafeAreaInsets, useKeyboardHeight } from '@lynx-lab/edge-to-edge/react'
 
-function Screen() {
-  const insets = useSafeAreaInsets()      // { top, right, bottom, left } in dp / pt
-  const keyboard = useKeyboardHeight()    // 0 when hidden
-  return <view style={`padding-top:${insets.top}px`} />
+export function Screen() {
+    const insets = useSafeAreaInsets()      // { top, right, bottom, left } in dp / pt
+    const keyboard = useKeyboardHeight()    // 0 when hidden
+    return <view style={`padding-top:${insets.top}px;padding-bottom:${Math.max(insets.bottom, keyboard)}px`} />
 }
 ```
 
@@ -109,18 +109,6 @@ insets as padding or margin for you.
 `generation` is a monotonic counter shared by every delivery channel; a gap means an
 update was lost and you should re-read.
 
-## What is verified where
-
-| | Android | iOS |
-|---|---|---|
-| Insets on the very first frame, both threads | Pixel 9, emulator | iPhone 17 simulator |
-| Rotation, display cutout on the side | Pixel 9 (`left = 65.9`) | simulator (`left = right = 62`) |
-| Gesture vs three-button navigation | emulator (`bottom` 24 → 48) | n/a |
-| Keyboard height | emulator (`ime()`, 336 dp) | not yet |
-| `setSystemBarStyle`, `setSystemBarHidden` | emulator, `dumpsys window` and screenshots | **no-op in v1**, see below |
-| Release build under R8 | emulator | not yet |
-| Second `LynxView` in the same process | Pixel 9 | not yet |
-
 ## Platform notes
 
 **Android.** Edge-to-edge is enabled the same way `androidx.activity` does it,
@@ -147,7 +135,7 @@ The current iOS snapshot reports `edgeToEdge: true` as a host assumption, not as
 a measurement of the view's geometry. Use the reported insets for layout.
 
 **Multiple `LynxView`s.** Every view gets its own `globalProps`, so several views with
-different insets work. The store is per process.
+different insets work. The registry lives for the process; snapshots and generations belong to each view.
 
 ## Manual registration
 
@@ -169,6 +157,16 @@ call `EdgeToEdge.install(application)` themselves, or rely on `refreshSafeArea()
 `@lynx-lab/edge-to-edge/testing` exports `createFakeEdgeToEdge()`, a fake native module
 plus `lynx.__globalProps` and `GlobalEventEmitter`, for unit tests and for Lynx Explorer
 where the native half is absent.
+
+
+## More documentation
+
+- [Implementation and ownership](./docs/implementation.md)
+- [Compatibility and host updates](./docs/compatibility.md)
+- [Contribution and checks](./CONTRIBUTING.md)
+
+Imperative bar calls retain at most one style and one visibility entry. Each call overrides earlier
+entries only for its field; component updates retain their position and unmount restores the next entry.
 
 ## License
 

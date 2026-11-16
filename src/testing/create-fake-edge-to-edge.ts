@@ -2,9 +2,9 @@ import type { LynxEdgeToEdgeNative, SafeAreaWire } from '../native.js'
 
 export interface FakeEdgeToEdgeOptions {
     /** Что лежит в lynx.__globalProps.safeArea на старте. По умолчанию ничего. */
-    initialGlobalProps?: Partial<SafeAreaWire> | null
+    initialGlobalProps?: Partial<SafeAreaWire> | null | undefined
     /** Что отдаёт нативный getSnapshot. По умолчанию нули с generation 0. */
-    native?: Partial<SafeAreaWire>
+    native?: Partial<SafeAreaWire> | undefined
 }
 
 export interface FakeEdgeToEdge extends LynxEdgeToEdgeNative {

@@ -25,11 +25,13 @@ export const GLOBAL_PROPS_CHANGED_EVENT = 'onGlobalPropsChanged'
 /** Локальное объявление: у @lynx-js/types нет рантайма, а на MTS половины полей нет. */
 declare const lynx:
     | {
-          __globalProps?: Record<string, unknown>
-          getJSModule?: (name: string) => {
-              addListener(event: string, cb: (...args: unknown[]) => void): void
-              removeListener(event: string, cb: (...args: unknown[]) => void): void
-          } | null
+          __globalProps?: Record<string, unknown> | undefined
+          getJSModule?:
+              | ((name: string) => {
+                    addListener(event: string, cb: (...args: unknown[]) => void): void
+                    removeListener(event: string, cb: (...args: unknown[]) => void): void
+                } | null)
+              | undefined
       }
     | undefined
 

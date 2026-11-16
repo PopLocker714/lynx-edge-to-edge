@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { setNativeModule } from '../native.js'
+import { SystemBars } from '../react/index.js'
 import type { SystemBarsEntry } from '../system-bars.js'
 import { resetSystemBarsForTests, setSystemBarStyle } from '../system-bars.js'
-import { setNativeModule } from '../native.js'
 import { createFakeEdgeToEdge } from '../testing/index.js'
-import { SystemBars } from '../react/index.js'
 
 const hooks = vi.hoisted(() => ({
     effects: [] as Array<() => undefined | (() => void)>,

@@ -8,22 +8,31 @@
 Safe area, инсеты, edge-to-edge и системные бары для [Lynx](https://lynxjs.org).
 `react-native-edge-to-edge` плюс `react-native-safe-area-context` в одном пакете.
 
-> **Статус: pre-release.** API ещё может двигаться до 1.0. Всё ниже проверено на
-> Pixel 9 (Android 17), эмуляторе Android 16 и симуляторе iPhone 17 (iOS 26.5) на
-> стоковом `rc`-шаблоне Sparkling и Lynx 3.9.0. Доказательства лежат в
-> [lynx-lab](https://github.com/PopLocker714/lynx-lab).
+> **Pre-release / candidate.** В этой версии изменено native ownership. Исторические
+> проверки на устройствах не доказывают готовность этого артефакта; текущая
+> [матрица совместимости](./docs/compatibility.ru.md) описана отдельно.
 
-## Зачем
+## Поддержка платформ
 
-`env(safe-area-inset-*)` на Android всегда `0`: сеттер вырезан из `liblynx.so`, а `ENV`
-не зарегистрирован в движке как динамическая зависимость стиля
-([lynx-family/lynx#299](https://github.com/lynx-family/lynx/issues/299)). Ничто в
-экосистеме не включает edge-to-edge на Android, а на iOS инсеты читаются один раз и
-на повороте не обновляются.
+| Возможность | Android | iOS |
+|---|---|---|
+| Safe-area updates / rotation | Реализовано, per view | Реализовано, per view |
+| Перекрытие клавиатурой | API 30+; ниже ноль | Реализовано; multi-scene/floating QA требуется |
+| Style / visibility системных баров | Реализовано | No-op; status bar управляет native host |
+| Ранние globalProps | Seed своего окна, затем точная геометрия view | Seed attached owner window, затем точная геометрия view |
 
-Пакет кладёт инсеты в `lynx.__globalProps.safeArea` *до старта JS-рантайма*, поэтому уже
-первый кадр на обоих потоках получает правильные числа. Обновления приходят тем же
-каналом. Миграция существующего CSS это поиск-замена: `env(` → `var(--`.
+| Проверяемая связка | Статус этой версии |
+|---|---|
+| Sparkling 2.1.0-rc.36 / Lynx 3.9 / ReactLynx 0.125 / Rsbuild 2 | Candidate; финальный consumer device QA требуется |
+| Исторический ReactLynx 0.116 / Rsbuild 1 | Только прежние evidence |
+| Другие Lynx host / minimum OS | Не проверены |
+
+## Назначение
+
+Пакет доставляет изменяемые инсеты в `lynx.__globalProps.safeArea` и CSS custom properties.
+Ранний seed относится только к известному окну владельца; вложенный view получает точную
+геометрию после layout. Unattached iOS view ждёт attach/layout. Первый кадр проверяется отдельно
+для каждого host; универсальной гарантии для произвольной геометрии нет.
 
 ## Установка
 
@@ -31,8 +40,8 @@ Safe area, инсеты, edge-to-edge и системные бары для [Lyn
 bun add @lynx-lab/edge-to-edge
 ```
 
-**Android** — больше ничего. `ContentProvider` из манифеста библиотеки включает
-edge-to-edge и начинает публиковать инсеты ещё до `Application.onCreate`.
+**Android** — manifest `ContentProvider` устанавливает наблюдение Activity до
+`Application.onCreate`; публикация начинается при появлении окна/view.
 
 Одна особенность Gradle-плагина Lynx: сгенерированный autolink-реестр
 (`app/build/generated/source/lynxLibraryRegistry/`) не перегенерируется при добавлении
@@ -51,12 +60,12 @@ edge-to-edge и начинает публиковать инсеты ещё до
 import { SafeAreaProvider, SafeAreaView, SystemBars } from '@lynx-lab/edge-to-edge/react'
 
 export function App() {
-  return (
-    <SafeAreaProvider>
-      <SystemBars style="auto" />
-      <Screen />
-    </SafeAreaProvider>
-  )
+    return (
+        <SafeAreaProvider>
+            <SystemBars style="auto" />
+            <SafeAreaView><view /></SafeAreaView>
+        </SafeAreaProvider>
+    )
 }
 ```
 
@@ -71,10 +80,10 @@ export function App() {
 ```tsx
 import { useSafeAreaInsets, useKeyboardHeight } from '@lynx-lab/edge-to-edge/react'
 
-function Screen() {
-  const insets = useSafeAreaInsets()      // { top, right, bottom, left } в dp / pt
-  const keyboard = useKeyboardHeight()    // 0, когда скрыта
-  return <view style={`padding-top:${insets.top}px`} />
+export function Screen() {
+    const insets = useSafeAreaInsets()      // { top, right, bottom, left } в dp / pt
+    const keyboard = useKeyboardHeight()    // 0, когда скрыта
+    return <view style={`padding-top:${insets.top}px;padding-bottom:${Math.max(insets.bottom, keyboard)}px`} />
 }
 ```
 
@@ -108,18 +117,6 @@ function Screen() {
 `generation` это монотонный счётчик, общий для всех каналов доставки; разрыв означает
 потерянное обновление, и значение стоит перечитать.
 
-## Что и где проверено
-
-| | Android | iOS |
-|---|---|---|
-| Инсеты на самом первом кадре, оба потока | Pixel 9, эмулятор | симулятор iPhone 17 |
-| Поворот, вырез сбоку | Pixel 9 (`left = 65.9`) | симулятор (`left = right = 62`) |
-| Жестовая против трёхкнопочной навигации | эмулятор (`bottom` 24 → 48) | н/п |
-| Высота клавиатуры | эмулятор (`ime()`, 336 dp) | пока нет |
-| `setSystemBarStyle`, `setSystemBarHidden` | эмулятор, `dumpsys window` и скриншоты | **no-op в v1**, см. ниже |
-| Release-сборка под R8 | эмулятор | пока нет |
-| Второй `LynxView` в том же процессе | Pixel 9 | пока нет |
-
 ## Особенности платформ
 
 **Android.** Edge-to-edge включается так же, как это делает `androidx.activity`, включая
@@ -146,7 +143,7 @@ iOS. Ниже API 30 `keyboardHeight` всегда `0`.
 а не результат измерения геометрии view. Для layout используйте полученные инсеты.
 
 **Несколько `LynxView`.** У каждого view свои `globalProps`, поэтому несколько view с
-разными инсетами работают. Кеш один на процесс.
+разными инсетами работают. Реестр живёт в процессе; снимки и поколения принадлежат отдельным view.
 
 ## Ручная регистрация
 
@@ -168,6 +165,16 @@ Android-хосты без `ContentProvider` (опт-аут через `tools:nod
 `@lynx-lab/edge-to-edge/testing` экспортирует `createFakeEdgeToEdge()`: фейк нативного
 модуля плюс `lynx.__globalProps` и `GlobalEventEmitter`, для юнит-тестов и для Lynx
 Explorer, где нативной половины нет.
+
+
+## Документация
+
+- [Реализация и ownership](./docs/implementation.ru.md)
+- [Совместимость и обновления host](./docs/compatibility.ru.md)
+- [Разработка и проверки](./CONTRIBUTING.ru.md)
+
+Imperative bar API хранит максимум одну запись style и одну visibility. Вызов перекрывает прежние
+записи только своего поля; update компонента сохраняет позицию, unmount восстанавливает следующую запись.
 
 ## Лицензия
 

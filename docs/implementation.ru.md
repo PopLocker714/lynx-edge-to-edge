@@ -1,0 +1,63 @@
+# Реализация
+
+[English](./implementation.md)
+
+Структура остаётся небольшой: TypeScript core владеет подписками, кешем и приоритетом баров;
+`src/react` — ReactLynx effects; Kotlin и Objective-C — интеграцией с ОС.
+Публичные peer ranges и экспорт React исходником TSX сохранены.
+
+## Владельцы и потоки
+
+Android lifecycle callbacks и pre-draw hooks работают на UI-потоке. У каждой Activity слабый
+реестр; каждый LynxView имеет собственный неизменяемый снимок и generation. Геометрия —
+пересечение перекрытий окна с границами view, в dp. Чтение/запись кеша под коротким lock,
+доставка после освобождения. `getSnapshot` получает только identity через
+`LynxContext.getLynxView` и читает кеш. Инициализация модуля, refresh и команды баров уходят на UI.
+`refreshSafeArea` устанавливает lifecycle callbacks и идемпотентно подключает текущую Activity:
+наблюдение продолжается и без provider в manifest. Уничтожение удаляет hooks и состояние.
+Поиск новых view ограничен 240 pre-draw кадрами после attach/resume; добавив view позже,
+хост должен вызвать `refreshSafeArea`. Найденные view продолжают получать обновления геометрии.
+
+До layout Android заполняет каждый найденный view значениями его окна. Это предназначено для
+полноэкранного view Sparkling; embedded view получает точные значения после layout.
+Неизвестный владелец получает generation zero, никогда чужой кеш. Первый кадр требует QA
+каждого host. На API <30 высота клавиатуры нулевая; API 30+ использует пересечение IME.
+
+На iOS process-lived hook устанавливается при launch и синхронно заполняет globalProps до
+загрузки runtime, если у view есть своё окно. Unattached view ждёт layout, не угадывая key window.
+Прозрачный observer следит за safe area конкретного view. Уведомления пересчитывают измеренные
+observer, не заменяя точные инсеты оконными. Ключи кеша — слабые view, доступ защищён
+`os_unfair_lock`; реестр, UIKit и доставка событий принадлежат main queue. Sync getter читает
+только identity/cache, без `dispatch_sync(main)`. Contexts слабые и получают события своего view.
+Клавиатура относится к зарегистрированному окну с first responder, затем пересекается с каждым
+view. Multi-scene и плавающая клавиатура ещё требуют device QA.
+
+`edgeToEdge: true` на iOS — договорённость с host, не измеренная геометрия. Style/visibility
+status bar принадлежат UIViewController. Setters пакета остаются no-op на iOS. Navigation bar
+приложения и Home indicator — отдельные понятия.
+
+## JavaScript и React
+
+Чтение: per-view globalProps, затем native cache, затем нулевой fallback. Refresh с generation
+zero не перетирает прогретый снимок. Generation монотонен в пределах одного view/runtime.
+`SystemBars` создаёт запись в effect, а не render/MTS. Update сохраняет позицию; unmount
+удаляет текущую запись. Imperative API хранит максимум одну запись style и одну visibility,
+переносит над существующими только вызванное поле. Новые component mounts могут их перекрыть.
+Изменяющие API баров вызываются только на background thread.
+
+React экспорт остаётся TSX: JSX view преобразует ReactLynx compiler потребителя.
+Переход на автоматический JSX output требует отдельных consumer evidence. Unit hook adapters
+проверяют effects и cleanup, но не доказывают scheduling нативного runtime.
+
+## Источники и review
+
+Исходная реализация адаптировала идеи `zoontek/react-native-edge-to-edge`,
+`react-native-safe-area-context` и AndroidX EdgeToEdge. Точные исходные upstream commits не
+записаны; миграция не придумывает происхождение. Новый native код нельзя переносить без
+закреплённого источника и проверки лицензии. Traceability исходного кода остаётся задачей релиза.
+Public context/view APIs Lynx 3.9 прочитаны локально; правила Android/iOS:
+
+- [Android window insets](https://developer.android.com/develop/ui/views/layout/edge-to-edge)
+- [AndroidX EdgeToEdge](https://github.com/androidx/androidx/blob/androidx-main/activity/activity/src/main/java/androidx/activity/EdgeToEdge.kt)
+- [Apple safeAreaInsets](https://developer.apple.com/documentation/uikit/uiview/safeareainsets)
+- [Apple status-bar updates](https://developer.apple.com/documentation/uikit/uiviewcontroller/setneedsstatusbarappearanceupdate())

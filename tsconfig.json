@@ -7,14 +7,17 @@
         "strict": true,
         "noUncheckedIndexedAccess": true,
         "verbatimModuleSyntax": true,
-        "skipLibCheck": true,
+        "skipLibCheck": false,
         "noEmit": true,
-        "types": ["vitest/globals"],
+        "types": [],
         "jsx": "react-jsx",
         "jsxImportSource": "@lynx-js/react",
         "paths": {
-            "@lynx-lab/edge-to-edge": ["./src/index.ts"]
+            "@lynx-lab/edge-to-edge": ["./src/index.ts"],
+            "preact": ["./node_modules/preact/src/index.d.ts"]
         }
     },
-    "include": ["src", "vitest.config.ts"]
+    "include": ["src", "types"],
+    "extends": "./tsconfig.strict.json",
+    "exclude": ["src/__tests__"]
 }

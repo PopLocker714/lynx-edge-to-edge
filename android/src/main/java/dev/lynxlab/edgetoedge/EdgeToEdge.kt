@@ -165,6 +165,8 @@ object EdgeToEdge {
             }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            // Required below target-35 enforcement; deprecated API remains effective there.
+            @Suppress("DEPRECATION")
             window.isStatusBarContrastEnforced = false
             // Контраст нав-бара НЕ трогаем: полупрозрачный скрим под трёхкнопочной
             // навигацией это документированный дефолт Android 15, а не баг.

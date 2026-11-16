@@ -26,8 +26,8 @@ import type {
     EdgeInsets,
     SafeAreaMode,
     SafeAreaSnapshot,
-    SystemBarsProps,
     SystemBarsEntry,
+    SystemBarsProps,
 } from '@lynx-lab/edge-to-edge'
 import {
     getSafeAreaSnapshot,
@@ -52,8 +52,8 @@ export function useKeyboardHeight(): number {
 }
 
 export interface SafeAreaProviderProps {
-    children?: ReactNode
-    className?: string
+    children?: ReactNode | undefined
+    className?: string | undefined
 }
 
 /**
@@ -65,22 +65,25 @@ export function SafeAreaProvider(props: SafeAreaProviderProps) {
     const snapshot = useSafeAreaSnapshot()
     const style = useMemo(() => `${safeAreaCssVarString(snapshot)}flex:1;`, [snapshot])
     return (
-        <view className={props.className} style={style}>
+        <view
+            {...(props.className === undefined ? {} : { className: props.className })}
+            style={style}
+        >
             {props.children}
         </view>
     )
 }
 
 export interface SafeAreaViewProps {
-    children?: ReactNode
-    className?: string
-    style?: string
+    children?: ReactNode | undefined
+    className?: string | undefined
+    style?: string | undefined
     /** По умолчанию все четыре. Горизонтальные важны: альбомный вырез и iPad. */
-    edges?: readonly Edge[]
+    edges?: readonly Edge[] | undefined
     /** 'padding' (по умолчанию) или 'margin'. */
-    mode?: SafeAreaMode
+    mode?: SafeAreaMode | undefined
     /** Добавлять ли высоту клавиатуры к нижнему инсету. По умолчанию нет, как в iOS. */
-    avoidKeyboard?: boolean
+    avoidKeyboard?: boolean | undefined
 }
 
 const ALL_EDGES: readonly Edge[] = ['top', 'right', 'bottom', 'left']
@@ -106,7 +109,10 @@ export function SafeAreaView(props: SafeAreaViewProps) {
     const snapshot = useSafeAreaSnapshot()
     const style = safeAreaViewStyle(snapshot, props)
     return (
-        <view className={props.className} style={style}>
+        <view
+            {...(props.className === undefined ? {} : { className: props.className })}
+            style={style}
+        >
             {props.children}
         </view>
     )
