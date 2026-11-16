@@ -41,9 +41,37 @@ object EdgeToEdge {
     private val hooks = WeakHashMap<Activity, ViewTreeObserver.OnPreDrawListener>()
     private val scanBudget = WeakHashMap<Activity, Int>()
 
-    @Volatile var statusBarHidden = false
+    private data class Bars(
+        var statusStyle: String = "auto",
+        var navigationStyle: String = "auto",
+        var statusHidden: Boolean = false,
+        var navigationHidden: Boolean = false,
+    )
 
-    @Volatile var navigationBarHidden = false
+    private val bars = WeakHashMap<Activity, Bars>()
+    private val views = WeakHashMap<Activity, MutableSet<LynxView>>()
+
+    fun setStyle(
+        activity: Activity,
+        status: String,
+        navigation: String,
+    ) {
+        val state = bars.getOrPut(activity) { Bars() }
+        state.statusStyle = status
+        state.navigationStyle = navigation
+        applyBars(activity)
+    }
+
+    fun setHidden(
+        activity: Activity,
+        status: Boolean,
+        navigation: Boolean,
+    ) {
+        val state = bars.getOrPut(activity) { Bars() }
+        state.statusHidden = status
+        state.navigationHidden = navigation
+        applyBars(activity)
+    }
 
     fun install(app: Application) {
         if (installed) return
