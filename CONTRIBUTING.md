@@ -60,8 +60,8 @@ Nontrivial native/lifecycle/API changes need independent read-only review. Check
 Consumer docs change together in EN/RU. Conventional commits describe the change; formatting stays
 separate from behavior.
 
-`prepublishOnly` and the release workflow deliberately block publishing: semantic-release repacks
-after version/changelog preparation, so QA cannot prove the final archive. The required flow is
-prepare → immutable tarball → consumer QA → publish the same hash. Trusted Publishing/OIDC and
-explicit provenance are required; no long-lived npm token. Dry run does not publish. Passing checks
-alone never authorizes a release.
+Direct `release` and `prepublishOnly` remain blocked. The manual prepare → QA → publish
+workflow now preserves one immutable archive; see [Releasing](./docs/releasing.md).
+Choose SemVer explicitly and commit the final version/changelog before preparation.
+`release:dry-run` provides advisory analysis only. Complete source-bound QA and explicit
+manual publish approval are required; passing local checks does not authorize publication.

@@ -1,0 +1,20 @@
+{
+    "schemaVersion": 1,
+    "repository": "PopLocker714/lynx-edge-to-edge",
+    "requiredChecks": [
+        "android-debug",
+        "android-release-r8",
+        "ios-debug",
+        "ios-release",
+        "native-source-bindings",
+        "minimum-android",
+        "minimum-ios",
+        "independent-review",
+        "edge-first-visible-frame-android",
+        "edge-first-visible-frame-ios",
+        "edge-rotation-android-release",
+        "edge-keyboard-ios-release",
+        "edge-multiview-late-owner",
+        "edge-bars-resume-android"
+    ]
+}

@@ -60,7 +60,8 @@ Standalone Kotlin language 1.9 убирает fallback kapt; consumers сохр�
 [матрицу совместимости](./docs/compatibility.ru.md). Потребительские docs меняются парами EN/RU.
 Conventional commits описывают change; форматирование отдельно от поведения.
 
-`prepublishOnly` и release workflow намеренно блокируют публикацию: semantic-release перепаковывает
-после version/changelog, и QA не доказывает итоговый архив. Нужна цепочка prepare → immutable tarball
-→ consumer QA → publish того же hash. Trusted Publishing/OIDC и явный provenance обязательны;
-долгоживущий npm token не используется. Dry run не публикует. Успешные checks не разрешают релиз.
+Прямые `release` и `prepublishOnly` остаются заблокированы. Ручной workflow
+prepare → QA → publish сохраняет один неизменяемый архив; см. [порядок выпуска](./docs/releasing.ru.md).
+Выберите SemVer и закоммитьте финальные version/changelog до подготовки.
+`release:dry-run` — только рекомендательный анализ. Нужны полный source-bound QA и явный
+manual publish; успешные локальные checks сами по себе не разрешают публикацию.
