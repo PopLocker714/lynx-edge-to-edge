@@ -37,6 +37,17 @@ Apache-2.0. Dev-only, не экспортируется и не пакуется
 закреплены точно. Negative control без файла обязан показать только отсутствие ElementNode.
 Владелец Lynx Lab; пересмотр 2026-12-16, истечение 2026-12-17. Удалить после upstream fix и проверки.
 
+`@lynx-js/types` 4.2.1 содержит устаревшее расширение `react.JSX`: при hoisted install
+оно смешивает refs React DOM input с Lynx и затеняет Lynx `SVGProps`. Dev-only patch под
+Apache-2.0 удаляет только это расширение, сохраняя все экспортируемые типы элементов Lynx.
+ReactLynx 0.125 использует собственный JSX namespace `@lynx-js/react/jsx-runtime`.
+Strict fixture проверяет native input/SVG и несовместимость DOM/native refs. Compatibility
+check привязан к точной версии и SHA256 declaration. Пересмотреть при обновлении Lynx types
+или ReactLynx; удалить, когда upstream корректно разделит JSX namespaces. Корневой dev patch
+не поставляется и не применяется в consumer: его renderer/type profile проверяется отдельно.
+Hoisted и isolated development layouts проверены с `skipLibCheck: false`; разрешённые
+версии зависимостей и runtime bytes не меняются.
+
 После совместимого обновления своего dev graph остались GHSA-3g3m-2fjr-6pw4 (glob cancellation)
 и GHSA-g3hv-75wg-m249 (minimatch amplification), только dev release tooling. Злоумышленнику нужен
 контроль над glob/input tooling; native runtime dependency их не поставляет. Публикация заблокирована.

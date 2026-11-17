@@ -10,7 +10,7 @@ if (new Date() >= new Date('2026-12-17T00:00:00Z')) {
         'Audit exceptions expired; reassess GHSA-3g3m-2fjr-6pw4 and GHSA-g3hv-75wg-m249'
     )
 }
-const auditedLock = '52f8e929a292e21d7a0fbbba94494435ff25bfd272df86bea8902b82bf7f246d'
+const auditedLock = 'b95f49375a7229b3e193fbcb67c32562e28471b48971a8e666b6c65ed85c4fd5'
 if (createHash('sha256').update(readFileSync('bun.lock')).digest('hex') !== auditedLock) {
     throw new Error('Dependency graph changed: reassess the two audit exceptions')
 }

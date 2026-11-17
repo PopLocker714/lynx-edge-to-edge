@@ -37,6 +37,17 @@ Development only, neither exported nor packed. `@types/react` and internal-preac
 The negative control without that file must report only the omitted ElementNode.
 Owner: Lynx Lab; review 2026-12-16, expires 2026-12-17. Remove after upstream fix and verification.
 
+`@lynx-js/types` 4.2.1 includes a legacy `react.JSX` augmentation that conflicts with
+React 18 DOM input refs and shadows Lynx `SVGProps` during hoisted installs. The dev-only
+Apache-2.0 patch removes that augmentation; all exported Lynx element types remain intact.
+ReactLynx 0.125 uses its own `@lynx-js/react/jsx-runtime` JSX namespace. A strict fixture
+verifies native input/SVG types and keeps DOM and native refs distinct. The compatibility
+check binds the patch to the exact version and declaration SHA256. Reassess on either Lynx
+types or ReactLynx upgrade; remove when upstream separates these JSX namespaces correctly.
+This root development patch is not shipped to or applied in consumer installations; those
+must verify their own renderer/type profile. Both hoisted and isolated development layouts
+are checked with `skipLibCheck: false`. No dependency resolution or runtime byte changes.
+
 Compatible updates of this package's development graph leave GHSA-3g3m-2fjr-6pw4 (glob cancellation)
 and GHSA-g3hv-75wg-m249 (minimatch amplification), in development release tooling only. An attacker
 needs control over tooling glob/input; the native runtime ships neither dependency. Publishing is blocked.
