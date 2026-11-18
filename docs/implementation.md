@@ -52,10 +52,13 @@ exercise effects and cleanup but do not prove scheduling in the native runtime.
 
 ## Sources and review
 
-The original implementation adapted concepts from `zoontek/react-native-edge-to-edge`,
-`react-native-safe-area-context` and AndroidX EdgeToEdge. Original upstream commit IDs were not
-recorded; this migration does not invent provenance. Do not copy new native code without a
-pinned source and license review. Existing origin/license traceability remains a release item.
+The system-bar entry stack adapts `zoontek/react-native-edge-to-edge`; navigation scrim
+values come from AndroidX/React Native. Safe Area Context informed the React API; a direct
+native port was not identified in the reviewed source comparison. The package includes
+[third-party notices and licenses](../THIRD_PARTY_NOTICES.md). Pinned references describe
+the 2026-11-18 attribution review, not the unknown original source commits. Historical
+provenance remains incomplete. Do not copy new native code without a pinned source and
+license review.
 Lynx 3.9 public context/view APIs were inspected locally; Android and iOS ownership rules:
 
 - [Android window insets](https://developer.android.com/develop/ui/views/layout/edge-to-edge)

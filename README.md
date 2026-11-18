@@ -183,4 +183,5 @@ entries only for its field; component updates retain their position and unmount 
 
 ## License
 
-MIT
+Original code: [MIT](./LICENSE). Adapted third-party material retains its
+[original licenses and notices](./THIRD_PARTY_NOTICES.md).

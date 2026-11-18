@@ -59,7 +59,10 @@
         "!android/src/test",
         "CONTRIBUTING.md",
         "CONTRIBUTING.ru.md",
-        "docs"
+        "docs",
+        "THIRD_PARTY_NOTICES.md",
+        "THIRD_PARTY_NOTICES.ru.md",
+        "licenses"
     ],
     "scripts": {
         "build": "tsc -p tsconfig.build.json",

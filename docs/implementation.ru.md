@@ -51,10 +51,13 @@ React экспорт остаётся TSX: JSX view преобразует React
 
 ## Источники и review
 
-Исходная реализация адаптировала идеи `zoontek/react-native-edge-to-edge`,
-`react-native-safe-area-context` и AndroidX EdgeToEdge. Точные исходные upstream commits не
-записаны; миграция не придумывает происхождение. Новый native код нельзя переносить без
-закреплённого источника и проверки лицензии. Traceability исходного кода остаётся задачей релиза.
+Стек системных панелей адаптирован из `zoontek/react-native-edge-to-edge`; цвета панелей
+взяты из AndroidX/React Native. Safe Area Context послужил ориентиром для React API;
+при сравнении проверенных исходников прямой перенос native-кода не обнаружен. Пакет
+включает [сторонние уведомления и лицензии](../THIRD_PARTY_NOTICES.ru.md). Закреплённые
+источники относятся к проверке атрибуции 2026-11-18, а не к неизвестным первоначальным
+commits. Историческое происхождение восстановлено не полностью. Новый native-код нельзя
+копировать без закреплённого источника и проверки лицензии.
 Public context/view APIs Lynx 3.9 прочитаны локально; правила Android/iOS:
 
 - [Android window insets](https://developer.android.com/develop/ui/views/layout/edge-to-edge)
