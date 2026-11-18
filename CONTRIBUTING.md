@@ -76,3 +76,13 @@ workflow now preserves one immutable archive; see [Releasing](./docs/releasing.m
 Choose SemVer explicitly and commit the final version/changelog before preparation.
 `release:dry-run` provides advisory analysis only. Complete source-bound QA and explicit
 manual publish approval are required; passing local checks does not authorize publication.
+
+The primary compiler is Xcode 27.2 locally and on the `xcode-27` GitHub image.
+The locked `ios-check` fixture uses
+`IPHONEOS_DEPLOYMENT_TARGET=15.0` for its build because this Xcode rejects older
+transitive Pod targets. This fixture override does not change the library podspec
+or verify the declared iOS 12 minimum. Record macOS/SDK versions with each run.
+The fixture's pinned Lynx 3.9 target retains compiler warnings for C99 designators,
+deprecated UIKit APIs, and discarded results in two upstream files, without promoting
+these diagnostics to errors. See `ios-check/Podfile` for the scoped exceptions.
+Our module compile/static-analysis checks still use `-Werror`; no runtime sources change.
