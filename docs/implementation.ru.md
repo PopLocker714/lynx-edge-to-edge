@@ -36,6 +36,25 @@ view. Multi-scene и плавающая клавиатура ещё требую
 status bar принадлежат UIViewController. Setters пакета остаются no-op на iOS. Navigation bar
 приложения и Home indicator — отдельные понятия.
 
+## Порядок загрузки iOS host
+
+В проверенном исходном Sparkling `2.1.0-rc.36` метод `SPKViewController.viewDidLoad` начинает
+загрузку до присоединения к окну. Поэтому библиотека не может заполнить начальный render:
+3/3 записи симулятора показали нулевые fallback-инсеты до последующего обновления globalProps.
+
+Пробник `a11a4dd` использует публичный `SPKContainerView` в полноэкранном host-adapter:
+присоединить контейнер, завершить layout со своим окном, затем загрузить шаблон ровно один раз.
+Lifecycle callbacks сохранены; таймеров, скрытия контента и remount нет. Этот порядок позволяет
+существующему hook библиотеки заполнить начальный render. Оконный seed относится только к
+полноэкранным bounds этого пробника, а не к произвольным embedded view. Стандартному Sparkling
+по-прежнему нужен host-adapter.
+
+В iOS 27 Release первый записанный новый контент имел ненулевые инсеты/generation 1 в 3/3 записях.
+Этот ограниченный результат симулятора не доказывает каждый отображённый кадр; первый кадр на
+физическом устройстве, произвольные embedded view и другие host не проверены. Native keyboard
+fixture прошёл показ/скрытие на симуляторе; физическая проверка клавиатуры Release открыта.
+См. [зафиксированные evidence](https://github.com/PopLocker714/lynx-lab/blob/docs/package-standards/docs/evidence/ios-simulator-2026-11-18/results.json).
+
 ## JavaScript и React
 
 Чтение: per-view globalProps, затем native cache, затем нулевой fallback. Refresh с generation

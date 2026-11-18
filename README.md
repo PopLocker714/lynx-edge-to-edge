@@ -33,8 +33,14 @@ The package delivers changing insets through `lynx.__globalProps.safeArea` and C
 An early seed belongs only to the known owner window; embedded views become precise after layout.
 An unattached iOS view waits for attach/layout. First-frame behavior is checked per host;
 there is no universal first-frame guarantee for arbitrary geometry.
-The first visible frame remains unverified on this candidate. Android Release rotation
-was blocked by the device tool; iOS Release keyboard had no host input to exercise.
+The baseline iOS Sparkling controller loaded before attachment and failed first-frame checks
+in 3/3 recordings. A full-window probe host adapter using public `SPKContainerView`, loading
+once after attachment/layout, passed 3/3 simulator recordings (`a11a4dd`). This does not fix
+the default Sparkling controller automatically or prove every displayed frame. Physical
+first-frame QA, arbitrary embedded views and other hosts remain unverified. iOS Release
+keyboard show/hide passed with a native input fixture on the simulator; physical QA remains open.
+Android Release rotation was blocked by the device tool in the recorded physical matrix.
+Remote JS/Android/iOS checks passed at `b9a27f9`; the picomatch dependency audit failed.
 See the exact archive and configuration results in [compatibility](./docs/compatibility.md).
 
 ## Install
@@ -54,7 +60,10 @@ that the native module and provider are present:
 ./gradlew :app:generateDebugLynxLibraryRegistry :app:generateReleaseLynxLibraryRegistry --rerun-tasks
 ```
 
-**iOS** — `pod install`. Nothing else.
+**iOS** — `pod install` registers the native package. For an initial full-window safe-area
+seed, the host must attach and lay out its container before loading the template. The default
+Sparkling controller does not establish this order; use a host adapter and verify its geometry.
+See the [host contract](./docs/implementation.md).
 
 Requirements: Lynx ≥ 3.9.0, ReactLynx ≥ 0.116, Autolink enabled in the host
 (the Sparkling `rc` template has it; `latest` does not).

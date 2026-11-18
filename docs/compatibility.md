@@ -46,14 +46,34 @@ separately; the corrected fixture passed normal teardown. Release has no probe s
 | Keyboard show/hide | Passed | Passed | Passed | Host input unavailable |
 | Bar style/hidden preserved on resume | Passed | Passed | Native host responsibility | Native host responsibility |
 
-First visible frame is **unverified**. Android logs show an initial JS render with neutral
-generation 0; the first stable captured frame around 1.75 seconds has nonzero insets/g1.
+In the 2026-11-17 physical checks, the first visible frame was **unverified**. Android logs show
+an initial JS render with neutral generation 0; the first stable captured frame around 1.75 seconds has nonzero insets/g1.
 That does not prove whether an earlier visible zero-inset frame existed. iOS recording
 could not be retrieved after the tool's runner-ownership change. Neither result is a
-first-frame pass. Minimum OS, other hosts/scenes and remote CI also remain unverified.
+first-frame pass. Later simulator and CI results are recorded separately below.
 
 This follow-up changes only documentation. The hash above identifies the tested artifact;
 a repack containing these updated documents has a different hash and identical runtime.
+
+## Simulator and remote CI follow-up (2026-11-18)
+
+The baseline Sparkling `SPKViewController` loaded before attachment and failed first-frame QA
+in 3/3 recordings: visible zero fallback insets preceded the globalProps correction. Probe
+`a11a4dd` instead uses a full-window host adapter with public `SPKContainerView`, loading once
+after attachment/layout. Its iOS 27 Release build passed; independent review of three recordings
+found nonzero insets/generation 1 in the first recorded new content (3/3 PASS).
+This is a bounded simulator result, not proof of every displayed frame. It does not automatically
+fix default Sparkling: the host loading contract requires an adapter. Arbitrary embedded views,
+other hosts/scenes, physical first-frame QA and minimum OS remain unverified.
+
+The same simulator Release passed background/resume, settled inset updates after rotation
+(landscape top/right/bottom/left `0/62/20/62` to portrait top/bottom `62/34`) and native keyboard
+fixture show/hide (`349 → 0`). The rotation result does not establish absence of transient jumps.
+Physical iOS Release keyboard QA remains open; simulator results do not replace the physical matrix.
+[Evidence](https://github.com/PopLocker714/lynx-lab/blob/docs/package-standards/docs/evidence/ios-simulator-2026-11-18/results.json).
+
+Remote JS, Android and iOS CI checks passed at package commit `b9a27f9`. The dependency audit
+failed on picomatch; successful build jobs do not clear that release gate or establish stable status.
 
 When a host updates:
 
@@ -68,4 +88,5 @@ When a host updates:
 Patch is a compatible fix; minor adds compatible capability; major breaks API, semantics or declared
 support. In 0.x a breaking change increments minor. Deprecation and migration guidance precede support
 removal except emergency security decisions. Publication is manual and separate from merge/QA;
-it is currently blocked until an immutable archive release flow exists.
+it remains blocked pending the final version and QA receipt, passing release gates and
+verification of Trusted Publishing.

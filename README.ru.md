@@ -33,8 +33,15 @@ Safe area, инсеты, edge-to-edge и системные бары для [Lyn
 Ранний seed относится только к известному окну владельца; вложенный view получает точную
 геометрию после layout. Unattached iOS view ждёт attach/layout. Первый кадр проверяется отдельно
 для каждого host; универсальной гарантии для произвольной геометрии нет.
-Первый видимый кадр этого candidate ещё не подтверждён. Android Release rotation
-заблокирован инструментом устройства; в iOS Release нет host input для проверки клавиатуры.
+Исходный iOS-контроллер Sparkling загружал шаблон до attach: первый кадр провалил проверку
+в 3/3 записях. Полноэкранный host-adapter пробника на публичном `SPKContainerView`, который
+загружает шаблон один раз после attach/layout, прошёл 3/3 записи симулятора (`a11a4dd`).
+Это не исправляет стандартный контроллер Sparkling автоматически и не доказывает каждый
+отображённый кадр. Первый кадр на физическом устройстве, произвольные embedded view и другие
+host не проверены. Показ/скрытие клавиатуры iOS Release прошли с native input fixture на
+симуляторе; физическая проверка открыта. Android Release rotation был заблокирован инструментом
+в зафиксированной физической матрице. Remote JS/Android/iOS прошли на `b9a27f9`;
+аудит зависимости picomatch завершился ошибкой.
 Точный архив и результаты конфигураций — в [совместимости](./docs/compatibility.ru.md).
 
 ## Установка
@@ -54,7 +61,10 @@ bun add @lynx-lab/edge-to-edge
 ./gradlew :app:generateDebugLynxLibraryRegistry :app:generateReleaseLynxLibraryRegistry --rerun-tasks
 ```
 
-**iOS** — `pod install`. Больше ничего.
+**iOS** — `pod install` регистрирует native-пакет. Для начального полноэкранного safe-area
+seed host должен выполнить attach и layout контейнера до загрузки шаблона. Стандартный
+контроллер Sparkling не обеспечивает этот порядок: нужен host-adapter и проверка его геометрии.
+См. [контракт host](./docs/implementation.ru.md).
 
 Требования: Lynx ≥ 3.9.0, ReactLynx ≥ 0.116, включённый Autolink в хосте
 (в `rc`-шаблоне Sparkling он есть, в `latest` нет).

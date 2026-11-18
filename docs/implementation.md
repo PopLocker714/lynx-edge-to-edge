@@ -37,6 +37,24 @@ each view. Multi-scene/floating keyboard behavior still needs device QA.
 controls status-bar style/visibility. All package bar setters remain no-ops on iOS. App navigation
 bars and the Home indicator are separate concepts.
 
+## iOS host loading contract
+
+In the checked Sparkling `2.1.0-rc.36` baseline, `SPKViewController.viewDidLoad` starts loading
+before window attachment. The library therefore cannot seed the initial render: 3/3 simulator
+recordings showed zero fallback insets before the later globalProps correction.
+
+Probe `a11a4dd` uses public `SPKContainerView` in a full-window host adapter: attach the container,
+complete layout with an owning window, then load the template exactly once. It preserves lifecycle
+callbacks and uses no timer, hidden-content workaround or remount. This ordering lets the existing
+library hook seed the initial render. The window seed applies only to this probe's full-window
+bounds; it is not a general contract for embedded views. Default Sparkling still needs a host adapter.
+
+On iOS 27 Release, the first recorded new content had nonzero insets/generation 1 in 3/3 recordings.
+This bounded simulator result does not prove every displayed frame; physical first-frame QA,
+arbitrary embedded views and other hosts remain unverified. A native keyboard fixture passed
+show/hide on the simulator; physical Release keyboard QA remains open.
+See [recorded evidence](https://github.com/PopLocker714/lynx-lab/blob/docs/package-standards/docs/evidence/ios-simulator-2026-11-18/results.json).
+
 ## JavaScript and React
 
 Reads prefer per-view globalProps, then native cache, then zero fallback. A generation-zero
