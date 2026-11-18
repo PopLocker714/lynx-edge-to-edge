@@ -82,7 +82,11 @@ manual publish; успешные локальные checks сами по себ�
 `IPHONEOS_DEPLOYMENT_TARGET=15.0`: этот Xcode отклоняет старые targets транзитивных
 Pods. Override тестовой сборки не меняет podspec библиотеки и не подтверждает
 заявленный минимум iOS 12. Версии macOS/SDK записываются для каждого прогона.
-В закреплённом Lynx 3.9 предупреждения о C99 designators, устаревших UIKit API
-и неиспользованных результатах в двух upstream-файлах остаются видимыми, но не
-превращаются в ошибки. Точные исключения ограничены в `ios-check/Podfile`.
-Компиляция/анализ нашего модуля сохраняют `-Werror`; runtime-исходники не меняются.
+В fixture Lynx 3.9 диагностики `c99-designator` и `deprecated-declarations`
+остаются предупреждениями только в target Lynx. `unused-result` понижен только
+в `parallel_parse_task_scheduler.cc` и `LynxTemplateRender.mm`, а
+`deprecated-implementations` — только в `LynxTextLayoutManager.m`. Источник —
+компиляция закреплённого SDK с Xcode 27.2; точная область — `ios-check/Podfile`.
+Проверки нашего модуля сохраняют `-Werror`; предупреждения не скрываются,
+runtime-исходники не меняются. Владелец: Lynx Lab; обнаружено 2026-11-18;
+пересмотр до 2026-12-18 или при смене Lynx/Xcode, до merge при истечении срока.
